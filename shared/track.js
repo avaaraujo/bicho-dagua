@@ -1,24 +1,54 @@
 // Pista: uma linha central fechada com largura fixa, no plano x/z (y = altura).
-// Formato de estádio, como uma piscina: duas retas e duas curvas de 180°
-// bem fechadas em volta de uma mureta central. As curvas decidem a corrida.
+// Uma piscina vista de cima: reta de largada embaixo, duas curvas fechadas de
+// 180° nas pontas, uma chicane em "lombada" na reta de cima e pilares de pedra
+// na água que obrigam a escolher por qual lado passar.
 
 export const TRACK_HALF_WIDTH = 6.5;
-export const STRAIGHT = 46; // comprimento de cada reta
-export const TURN_RADIUS = 10; // raio da curva na linha central
+const R = 10; // raio das curvas
+const Q = Math.PI / 4;
 
+// Trechos da linha central. Ângulo negativo = vira para -z (para cima na tela).
 // Largada no meio da reta de baixo (perto da câmera), indo para +x.
-function stadiumPoints(L = STRAIGHT, R = TURN_RADIUS, step = 0.5) {
+const SEGMENTS = [
+  { line: 22 },
+  { arc: -Math.PI, r: R }, // curva da direita
+  { line: 4.93 },
+  { arc: Q, r: R }, { arc: -Q, r: R }, // chicane: sobe...
+  { line: 5.86 }, // topo da lombada
+  { arc: -Q, r: R }, { arc: Q, r: R }, // ...e desce
+  { line: 4.93 },
+  { arc: -Math.PI, r: R }, // curva da esquerda
+  { line: 22 },
+];
+
+// Pilares de pedra: at = fração da volta, lateral = deslocamento (+ = para fora).
+const OBSTACLES = [
+  { at: 0.09, lateral: 0, r: 1.3 }, // antes da curva da direita
+  { at: 0.5, lateral: 0, r: 1.3 }, // no topo da chicane
+  { at: 0.88, lateral: 0, r: 1.3 }, // saindo da curva da esquerda
+];
+
+// Percorre os trechos em passos de "step" metros e devolve os pontos.
+export function pathPoints(segments = SEGMENTS, step = 0.5) {
   const pts = [];
-  const h = L / 2;
-  for (let x = 0; x < h; x += step) pts.push([x, R]);
-  for (let a = 0; a < Math.PI; a += step / R) pts.push([h + R * Math.sin(a), R * Math.cos(a)]);
-  for (let x = h; x > -h; x -= step) pts.push([x, -R]);
-  for (let a = 0; a < Math.PI; a += step / R) pts.push([-h - R * Math.sin(a), -R * Math.cos(a)]);
-  for (let x = -h; x < 0; x += step) pts.push([x, R]);
+  let x = 0;
+  let z = 15;
+  let a = 0; // direção = (cos a, sin a)
+  for (const seg of segments) {
+    const len = seg.line ?? Math.abs(seg.arc) * seg.r;
+    const n = Math.round(len / step);
+    for (let i = 0; i < n; i++) {
+      pts.push([x, z]);
+      const ds = len / n;
+      if (seg.arc !== undefined) a += Math.sign(seg.arc) * (ds / seg.r);
+      x += Math.cos(a) * ds;
+      z += Math.sin(a) * ds;
+    }
+  }
   return pts;
 }
 
-export function buildTrack(raw = stadiumPoints(), halfWidth = TRACK_HALF_WIDTH) {
+export function buildTrack(raw = pathPoints(), halfWidth = TRACK_HALF_WIDTH, obstacles = OBSTACLES) {
   // Área com sinal: decide para que lado fica o "fora" da pista.
   let area = 0;
   for (let i = 0; i < raw.length; i++) {
@@ -53,8 +83,34 @@ export function buildTrack(raw = stadiumPoints(), halfWidth = TRACK_HALF_WIDTH) 
     // radianos de curva à frente; positivo = a curva puxa para o lado de fora (+n)
     a.turn = Math.abs(Math.atan2(cross, dot)) * (bend >= 0 ? 1 : -1);
   }
+  // Quanto se vira no total nos próximos ~16 m, somando curvas para os dois
+  // lados (numa chicane a direção líquida quase não muda, mas exige freio).
+  const step = [];
+  for (let i = 0; i < samples.length; i++) {
+    const a = samples[i];
+    const b = samples[(i + 1) % samples.length];
+    step.push(Math.acos(Math.max(-1, Math.min(1, a.tx * b.tx + a.tz * b.tz))));
+  }
+  for (let i = 0; i < samples.length; i++) {
+    let sum = 0;
+    for (let k = 0; k < lookSamples; k++) sum += step[(i + k) % samples.length];
+    samples[i].curv = sum;
+  }
 
-  return { samples, length: s, halfWidth, outwardSign };
+  const track = { samples, length: s, halfWidth, outwardSign };
+  track.obstacles = obstacles.map((o) => {
+    const p = pointAt(track, o.at * s, o.lateral);
+    return { x: p.x, z: p.z, r: o.r, s: o.at * s, lateral: o.lateral };
+  });
+  // Caixa que envolve a piscina inteira (com a mureta de fora), para a câmera.
+  const wall = halfWidth + 2.6;
+  let minX = Infinity; let maxX = -Infinity; let minZ = Infinity; let maxZ = -Infinity;
+  for (const a of samples) {
+    minX = Math.min(minX, a.x - wall); maxX = Math.max(maxX, a.x + wall);
+    minZ = Math.min(minZ, a.z - wall); maxZ = Math.max(maxZ, a.z + wall);
+  }
+  track.bounds = { minX, maxX, minZ, maxZ };
+  return track;
 }
 
 // Ponto mais próximo da linha central. Devolve distância percorrida (s),
@@ -100,7 +156,7 @@ export function pointAt(track, s, lateral = 0) {
   return {
     x: a.x + a.tx * a.len * t + a.nx * lateral,
     z: a.z + a.tz * a.len * t + a.nz * lateral,
-    tx: a.tx, tz: a.tz, nx: a.nx, nz: a.nz, turn: a.turn, index: lo,
+    tx: a.tx, tz: a.tz, nx: a.nx, nz: a.nz, turn: a.turn, curv: a.curv, index: lo,
   };
 }
 

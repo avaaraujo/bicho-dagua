@@ -4,13 +4,18 @@ import { projectOnTrack, wrapDelta } from './track.js';
 import { LAPS } from './constants.js';
 
 export const BOAT_RADIUS = 1.5;
-export const ACCEL = 17;
-export const DRAG = 0.78; // velocidade máxima ≈ ACCEL / DRAG ≈ 22 m/s
-export const COAST_DRAG = 1.2;
+// Aceleração baixa e velocidade máxima alta: leva uns 5 s para chegar perto
+// do máximo, então cada batida (que para o barco) custa caro.
+export const ACCEL = 13.8;
+export const DRAG = 0.46; // velocidade máxima ≈ ACCEL / DRAG ≈ 30 m/s
+export const COAST_DRAG = 0.9;
 export const GRIP = 2.4; // quanto da derrapagem lateral some por segundo
 export const TURN_RATE = 2.35; // rad/s no melhor ponto
 export const MAX_SPEED = ACCEL / DRAG;
-export const BRAKE = 26; // m/s² freando
+export const BRAKE = 30; // m/s² freando
+// Batida mais forte que isso (m/s contra a parede/obstáculo/barco) para o barco.
+export const CRASH_SPEED = 1.5;
+const BOUNCE = 1.2; // velocidade com que o barco quica para trás depois de parar
 export const REVERSE_ACCEL = 9;
 export const MAX_REVERSE = 6;
 
@@ -77,31 +82,47 @@ export function stepBoat(b, input, dt, track, speedMul = 1) {
   updateProgress(b, track);
 }
 
-// Paredes: lado de fora (penhasco) e lado de dentro (ilha).
-// Bater rápido no lado de fora custa bastante velocidade.
+// Para o barco quase por completo e o devolve um pouco na direção (nx, nz).
+function crash(b, nx, nz) {
+  b.vx = nx * BOUNCE;
+  b.vz = nz * BOUNCE;
+  b.bump = 1;
+}
+
+// Paredes (mureta de fora e mureta do meio) e pilares de pedra.
+// Bater de frente para o barco; raspar de leve só tira um pouco de velocidade.
 export function collideWalls(b, track) {
   const p = projectOnTrack(track, b.x, b.z);
-  const limit = track.halfWidth - BOAT_RADIUS;
-  let nx = 0;
-  let nz = 0;
-  let over = 0;
-  if (p.lateral > limit) {
-    nx = p.nx; nz = p.nz; over = p.lateral - limit;
-  } else if (p.lateral < -limit) {
-    nx = -p.nx; nz = -p.nz; over = -limit - p.lateral;
-  }
   b._proj = p;
-  if (over <= 0) return 0;
-  b.x -= nx * over;
-  b.z -= nz * over;
-  const vn = b.vx * nx + b.vz * nz;
-  if (vn > 0) {
-    b.vx -= 1.35 * vn * nx;
-    b.vz -= 1.35 * vn * nz;
-    const keep = Math.max(0.45, 1 - vn * 0.045);
-    b.vx *= keep;
-    b.vz *= keep;
-    b.bump = Math.max(b.bump, Math.min(1, vn / 12));
+  const limit = track.halfWidth - BOAT_RADIUS;
+  let hit = 0;
+  if (p.lateral > limit) hit = pushOut(b, -p.nx, -p.nz, p.lateral - limit);
+  else if (p.lateral < -limit) hit = pushOut(b, p.nx, p.nz, -limit - p.lateral);
+  for (const o of track.obstacles || []) {
+    const dx = b.x - o.x;
+    const dz = b.z - o.z;
+    const min = o.r + BOAT_RADIUS;
+    const d2 = dx * dx + dz * dz;
+    if (d2 >= min * min || d2 < 1e-6) continue;
+    const d = Math.sqrt(d2);
+    hit = Math.max(hit, pushOut(b, dx / d, dz / d, min - d));
+  }
+  return hit;
+}
+
+// (nx, nz) aponta para longe da parede. Devolve a velocidade da batida.
+function pushOut(b, nx, nz, over) {
+  b.x += nx * over;
+  b.z += nz * over;
+  const vn = -(b.vx * nx + b.vz * nz); // velocidade indo contra a parede
+  if (vn <= 0) return 0;
+  if (vn > CRASH_SPEED) {
+    crash(b, nx, nz);
+  } else {
+    b.vx += vn * nx;
+    b.vz += vn * nz;
+    b.vx *= 0.97;
+    b.vz *= 0.97;
   }
   return vn;
 }
@@ -135,8 +156,9 @@ export function isWrongWay(b, track) {
   return fx * p.tx + fz * p.tz < -0.35;
 }
 
-// Empurra dois barcos para longe um do outro. "fixedB" = b não se mexe
-// (usado quando b é outro jogador controlado pelo próprio navegador dele).
+// Dois barcos se encostando. Batida de verdade para os dois. "fixedB" = b não
+// se mexe (é outro jogador, controlado pelo próprio navegador dele; ele vai
+// sentir a batida do lado de lá).
 export function collideBoats(a, b, fixedB = false) {
   const dx = b.x - a.x;
   const dz = b.z - a.z;
@@ -154,16 +176,17 @@ export function collideBoats(a, b, fixedB = false) {
     b.x += nx * over * 0.5;
     b.z += nz * over * 0.5;
   }
-  const rv = (b.vx - a.vx) * nx + (b.vz - a.vz) * nz;
-  if (rv < 0) {
-    const j = -rv * 0.6;
-    a.vx -= nx * j * (fixedB ? 1.4 : 1);
-    a.vz -= nz * j * (fixedB ? 1.4 : 1);
+  const closing = (a.vx - b.vx) * nx + (a.vz - b.vz) * nz; // > 0 = se aproximando
+  if (closing > CRASH_SPEED) {
+    crash(a, -nx, -nz);
+    if (!fixedB) crash(b, nx, nz);
+  } else if (closing > 0) {
+    a.vx -= nx * closing * 0.5;
+    a.vz -= nz * closing * 0.5;
     if (!fixedB) {
-      b.vx += nx * j;
-      b.vz += nz * j;
+      b.vx += nx * closing * 0.5;
+      b.vz += nz * closing * 0.5;
     }
-    a.bump = Math.max(a.bump, Math.min(1, -rv / 10));
   }
   return true;
 }

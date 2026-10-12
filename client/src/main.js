@@ -15,6 +15,23 @@ import { createAudio } from './audio.js';
 import { Race, Showcase } from './race.js';
 
 const $ = (id) => document.getElementById(id);
+
+// Se algo quebrar (principalmente em celular), mostra o erro na tela para dar
+// para tirar print e corrigir, em vez de o jogo simplesmente parar.
+function showCrash(message) {
+  let box = document.querySelector('.crash-report');
+  if (!box) {
+    box = document.createElement('p');
+    box.className = 'crash-report';
+    box.setAttribute('role', 'alert');
+    document.body.append(box);
+  }
+  box.textContent = `Ops, deu um erro no jogo. Manda um print disto: ${message} · ${navigator.userAgent}`;
+}
+window.addEventListener('error', (e) => showCrash(`${e.message} (${(e.filename || '').split('/').pop()}:${e.lineno})`));
+window.addEventListener('unhandledrejection', (e) => showCrash(String(e.reason?.message || e.reason)));
+// iOS ignora user-scalable=no: bloqueia o gesto de pinça para não dar zoom no meio da corrida
+document.addEventListener('gesturestart', (e) => e.preventDefault());
 const INTERNAL_HEIGHT = 560; // resolução interna baixa, ampliada com pixels nítidos
 const AUTOPILOT = new URLSearchParams(location.search).has('autopilot'); // só para testes automáticos
 
