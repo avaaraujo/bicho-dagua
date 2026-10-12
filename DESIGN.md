@@ -8,8 +8,8 @@ Visual direction: **late-90s console played on a CRT TV** (key visual 3, `docs/k
 - **Resolution:** the scene renders at 560 lines and is scaled up with `image-rendering: pixelated`. CSS scanlines and vignette sit on top. This is the visual signature and it also keeps phones running smoothly.
 - **Light:** a violet-and-teal hemisphere light plus a warm sun. No real shadows; each jet-ski gets a dark disc on the water instead.
 - **Fog:** violet `#c4a2c6`, from 110 to 360 m.
-- **Track:** a pool-shaped oval (two 46 m straights and two tight 180° turns) with a low checkered wall around the outside and down the middle, in violet.
-- **Camera:** fixed overhead at about 42° (56° on a phone held upright, turned 90° so the track fits), showing the whole pool. This is the core of the game's difficulty. The chase camera appears only after you cross the finish line.
+- **Track:** a pool with a low violet checkered wall around the outside and down the middle. It has a starting straight, two tight 180° turns (radius 10 m), a chicane shaped like a hump on the top straight, and three stone pillars in the water, each with a foam ring and an orange beacon.
+- **Camera:** fixed angle overhead at 44° (56° on a phone held upright, turned 90°). It frames the racers still in the race: close together, it zooms in on them (down to a minimum area); spread out, it opens up to the whole pool, never further. It pulls back quickly and moves in slowly, so nobody slips out of frame. This is the core of the game's difficulty. The chase camera appears only after you cross the finish line.
 - **Scenery:** a giant stone whale behind the pool (playing the role of the original's background creature), islets with palm trees, and the crater's orange rock cliffs with green ledges, waterfalls and lava (scrolling textures). The finish is a checkered strip on the water plus a pole with a flag on the center wall.
 - **Racers:** four original animals (Morsa, Garça, Sapo, Cabra) assembled from icosahedra, cones and boxes. Each one's color matches its jet-ski.
 

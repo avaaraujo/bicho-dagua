@@ -17,7 +17,9 @@ All characters, art, sounds and names are original.
 | Phone | on-screen ‹ › buttons | **Acelerar** button | **Ré** button |
 | Gamepad | left stick or d-pad | A or RT | B or LT |
 
-The track is a pool-shaped oval with a wall down the middle, and a race lasts about 1 minute. As in the original minigame, the camera is fixed overhead and shows the whole track. Steering is relative to the jet-ski, so when it is heading toward the screen, left and right feel reversed; that is the challenge. Taking a corner too fast throws you into the wall and costs speed. If you turn around, **CONTRAMÃO!** appears on screen. After you cross the finish line, the camera moves behind your jet-ski, which keeps lapping on its own while the others finish.
+The track is a pool seen from above, with a wall down the middle: a starting straight, two tight 180° turns at the ends, a chicane on the top straight, and three stone pillars in the water that force you to pick a side. A race lasts about 1 minute.
+
+The jet-ski takes about 5 seconds to reach top speed, and **any collision stops it**: the wall, a pillar or another jet-ski. You have to brake (**K**) before the turns. As in the original minigame, the camera has a fixed overhead angle and frames the racers who are still in the race. When they are close together it zooms in on them, and it only opens up to the whole track when they are spread out. Steering is relative to the jet-ski, so when it is heading toward the screen, left and right feel reversed. If you turn around, **CONTRAMÃO!** appears on screen. After you cross the finish line, the camera moves behind your jet-ski, which keeps lapping on its own while the others finish.
 
 ## Running locally
 

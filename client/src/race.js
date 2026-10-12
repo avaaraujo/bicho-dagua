@@ -7,7 +7,7 @@ import {
 import { createBrain, botInput } from '../../shared/bot.js';
 import { PHYSICS_DT, TICK_RATE } from '../../shared/constants.js';
 import { buildRacerModel } from './scene/models.js';
-import { STRAIGHT, TURN_RADIUS } from '../../shared/track.js';
+import { RaceCamera } from './camera.js';
 
 const INTERP_DELAY = 120; // ms atrás do servidor, para suavizar os outros
 
@@ -27,7 +27,9 @@ function nameTag(text, color) {
   const w = Math.min(240, ctx.measureText(text).width + 36);
   ctx.fillStyle = 'rgba(36, 20, 42, 0.85)';
   ctx.beginPath();
-  ctx.roundRect((256 - w) / 2, 10, w, 44, 10);
+  // roundRect não existe no Safari antigo (iOS < 16): sem ele, um retângulo simples
+  if (ctx.roundRect) ctx.roundRect((256 - w) / 2, 10, w, 44, 10);
+  else ctx.rect((256 - w) / 2, 10, w, 44);
   ctx.fill();
   ctx.fillStyle = color;
   ctx.fillRect((256 - w) / 2 + 10, 26, 10, 12);
@@ -42,33 +44,6 @@ function nameTag(text, color) {
   sprite.position.y = 3.6;
   sprite.renderOrder = 10;
   return sprite;
-}
-
-// Câmera fixa no alto mostrando a piscina inteira, como no minigame original.
-// No celular em pé ela gira 90° para a pista comprida caber na tela.
-export function overviewCamera(camera, track, sway = 0) {
-  const portrait = camera.aspect < 1;
-  const fov = portrait ? 50 : 38;
-  if (camera.fov !== fov) {
-    camera.fov = fov;
-    camera.updateProjectionMatrix();
-  }
-  const wall = track.halfWidth + 2.6;
-  const halfLong = STRAIGHT / 2 + TURN_RADIUS + wall + 1.5;
-  const halfShort = TURN_RADIUS + wall + 1.5;
-  const pitch = (portrait ? 56 : 42) * (Math.PI / 180);
-  const tanV = Math.tan((fov * Math.PI) / 360);
-  const tanH = tanV * camera.aspect;
-  const halfW = portrait ? halfShort : halfLong;
-  const halfD = portrait ? halfLong : halfShort;
-  const dist = Math.max(halfW / tanH, (halfD * Math.sin(pitch)) / tanV) * (portrait ? 1.18 : 1.3);
-  const up = Math.sin(pitch) * dist;
-  const back = Math.cos(pitch) * dist;
-  // mira um pouco atrás da pista: ela desce na tela e a baleia aparece no fundo
-  const target = portrait ? [-3, 0, 0] : [0, 0, -7];
-  if (portrait) camera.position.set(target[0] + back, up, target[2] + sway);
-  else camera.position.set(target[0] + sway, up, target[2] + back);
-  camera.lookAt(...target);
 }
 
 // Atualiza o modelo 3D a partir de um estado de barco.
@@ -101,6 +76,7 @@ export class Race {
     this.lastLap = 0;
     this.myPlace = null;
     this.cameraMode = 'overview'; // câmera de trás só depois de cruzar a chegada
+    this.raceCamera = new RaceCamera(this.camera, this.track);
 
     this.start.racers.forEach((r, i) => {
       const model = buildRacerModel(r.character);
@@ -249,7 +225,7 @@ export class Race {
         this.marker.position.y = 5.2 + Math.sin(t * 5) * 0.3;
       }
     } else {
-      overviewCamera(this.camera, this.track);
+      this.raceCamera.update(this.framePoints(), dt);
     }
     this.boardAcc = (this.boardAcc ?? 0) + dt;
     if (this.boardAcc > 0.25) {
@@ -298,6 +274,16 @@ export class Race {
     }
   }
 
+  // Quem a câmera de cima precisa mostrar: todo mundo que ainda está correndo.
+  framePoints() {
+    const pts = [];
+    for (const e of this.entries.values()) {
+      if (e.isMe ? this.finishedLocal : e.finished) continue;
+      pts.push(e.display);
+    }
+    return pts;
+  }
+
   setCameraMode(mode) {
     this.cameraMode = mode;
     if (this.myBoat) this.placeCamera(true);
@@ -306,7 +292,7 @@ export class Race {
   placeCamera(snap, dt = 0) {
     this.shake = Math.max(0, this.shake - dt * 2);
     if (this.cameraMode === 'overview') {
-      overviewCamera(this.camera, this.track, (Math.random() - 0.5) * this.shake);
+      this.raceCamera.update(this.framePoints(), dt, snap, this.shake);
       return;
     }
     if (this.camera.fov !== (this.camera.aspect < 1 ? 82 : 65)) {
@@ -355,6 +341,7 @@ export class Showcase {
       return { model, boat, brain: createBrain(100 + i), phase: i };
     });
     this.acc = 0;
+    this.raceCamera = new RaceCamera(camera, track);
   }
 
   update(dt, t) {
@@ -362,7 +349,7 @@ export class Showcase {
     while (this.acc >= PHYSICS_DT) {
       this.acc -= PHYSICS_DT;
       for (const r of this.racers) {
-        const { input, speedMul } = botInput(r.boat, r.brain, this.track, PHYSICS_DT);
+        const { input, speedMul } = botInput(r.boat, r.brain, this.track, PHYSICS_DT, undefined, this.racers.map((x) => x.boat));
         stepBoat(r.boat, input, PHYSICS_DT, this.track, speedMul * 0.85);
       }
       for (let i = 0; i < 4; i++) for (let j = i + 1; j < 4; j++) collideBoats(this.racers[i].boat, this.racers[j].boat);
@@ -372,7 +359,7 @@ export class Showcase {
       const sp = Math.abs(forwardSpeed(r.boat));
       if (sp > 4) this.spray.trail(r.boat, sp, dt);
     }
-    overviewCamera(this.camera, this.track, Math.sin(t * 0.2) * 6);
+    this.raceCamera.update(this.racers.map((r) => r.boat), dt);
   }
 
   dispose() {

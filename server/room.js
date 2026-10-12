@@ -164,10 +164,11 @@ export class Room {
     const elapsed = (now - this.raceStart) / 1000;
     const steps = Math.round(1 / TICK_RATE / PHYSICS_DT);
     const leader = Math.max(...this.racers.filter((r) => !r.isBot).map((r) => r.boat.total), -Infinity);
+    const boats = this.racers.filter((r) => r.finishTime === null).map((r) => r.boat);
     for (let s = 0; s < steps; s++) {
       for (const r of this.racers) {
         if (!r.isBot || r.finishTime !== null) continue;
-        const { input, speedMul } = botInput(r.boat, r.brain, track, PHYSICS_DT, Number.isFinite(leader) ? leader : undefined);
+        const { input, speedMul } = botInput(r.boat, r.brain, track, PHYSICS_DT, Number.isFinite(leader) ? leader : undefined, boats);
         stepBoat(r.boat, input, PHYSICS_DT, track, speedMul);
       }
       for (let i = 0; i < this.racers.length; i++) {

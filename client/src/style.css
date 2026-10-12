@@ -17,6 +17,7 @@
   --display: 'Titan One', 'Nunito', sans-serif;
   --body: 'Nunito', system-ui, sans-serif;
   --gutter: max(16px, env(safe-area-inset-left));
+  --gutter-r: max(16px, env(safe-area-inset-right));
 }
 
 * { box-sizing: border-box; }
@@ -85,7 +86,7 @@ input { caret-color: var(--magma); }
   flex-direction: column;
   align-items: center;
   gap: 18px;
-  padding: 24px var(--gutter);
+  padding: 24px var(--gutter-r) 24px var(--gutter);
   overflow-y: auto;
   touch-action: pan-y;
   user-select: text;
@@ -290,7 +291,7 @@ body.is-touch .controls-hint { display: none; }
 .hud-time {
   position: absolute;
   top: max(14px, env(safe-area-inset-top));
-  right: var(--gutter);
+  right: var(--gutter-r);
   font: 400 clamp(1.3rem, 3vw, 2rem) var(--display);
   font-variant-numeric: tabular-nums;
   color: var(--cream);
@@ -303,7 +304,7 @@ body.is-touch .controls-hint { display: none; }
 .hud-board {
   position: absolute;
   top: calc(max(14px, env(safe-area-inset-top)) + 54px);
-  right: var(--gutter);
+  right: var(--gutter-r);
   margin: 0;
   padding: 6px;
   list-style: none;
@@ -332,7 +333,7 @@ body.is-touch .controls-hint { display: none; }
 
 .hud-place {
   position: absolute;
-  right: var(--gutter);
+  right: var(--gutter-r);
   bottom: max(6px, env(safe-area-inset-bottom));
   font-size: clamp(4rem, 13vw, 9rem);
   line-height: 1;
@@ -357,6 +358,8 @@ body.is-touch .controls-hint { display: none; }
 /* Controles de toque */
 #touch { position: fixed; inset: auto 0 0 0; z-index: 9; height: 0; }
 .touch-btn {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
   position: fixed;
   bottom: max(18px, env(safe-area-inset-bottom));
   width: 84px;
@@ -376,7 +379,7 @@ body.is-touch .controls-hint { display: none; }
 #t-left { left: var(--gutter); }
 #t-right { left: calc(var(--gutter) + 98px); }
 .touch-gas {
-  right: var(--gutter);
+  right: var(--gutter-r);
   width: 112px;
   height: 112px;
   background: rgba(255, 106, 26, 0.85);
@@ -387,7 +390,7 @@ body.is-touch .controls-hint { display: none; }
 .touch-gas span { font: 400 0.85rem var(--display); color: var(--plum-deep); text-transform: uppercase; }
 .touch-gas.is-pressed { background: var(--magma-hot); }
 .touch-brake {
-  right: calc(var(--gutter) + 124px);
+  right: calc(var(--gutter-r) + 124px);
   width: 76px;
   height: 76px;
   align-content: center;
@@ -398,7 +401,7 @@ body.is-touch .controls-hint { display: none; }
 
 /* celular em pé: o Ré sobe para cima do Acelerar, longe dos botões de virar */
 @media (orientation: portrait) {
-  .touch-brake { right: calc(var(--gutter) + 18px); bottom: calc(max(18px, env(safe-area-inset-bottom)) + 124px); }
+  .touch-brake { right: calc(var(--gutter-r) + 18px); bottom: calc(max(18px, env(safe-area-inset-bottom)) + 124px); }
 }
 
 kbd {
@@ -425,7 +428,7 @@ body.is-touch .hud-place { top: calc(max(14px, env(safe-area-inset-top)) + 112px
   position: fixed;
   z-index: 12;
   top: max(14px, env(safe-area-inset-top));
-  right: var(--gutter);
+  right: var(--gutter-r);
   width: 44px;
   height: 44px;
   border-radius: 12px;
@@ -473,7 +476,7 @@ body.is-racing .mute { right: auto; left: 50%; transform: translateX(-50%); }
     align-items: center;
     justify-content: center;
     gap: 14px;
-    padding: 24px var(--gutter);
+    padding: 24px var(--gutter-r) 24px var(--gutter);
     text-align: center;
     background: var(--plum-deep);
   }
@@ -489,6 +492,23 @@ body.is-racing .mute { right: auto; left: 50%; transform: translateX(-50%); }
 }
 .rotate-title { margin: 0; font-size: clamp(2.2rem, 10vw, 3.2rem); text-transform: uppercase; }
 
+.crash-report {
+  position: fixed;
+  z-index: 40;
+  left: var(--gutter);
+  right: var(--gutter-r);
+  bottom: max(12px, env(safe-area-inset-bottom));
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 3px solid var(--plum-deep);
+  background: var(--cream);
+  color: var(--plum-deep);
+  font: 800 0.85rem var(--body);
+  user-select: text;
+  -webkit-user-select: text;
+  overflow-wrap: anywhere;
+}
+
 .overlay {
   position: fixed;
   inset: 0;
@@ -498,7 +518,7 @@ body.is-racing .mute { right: auto; left: 50%; transform: translateX(-50%); }
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 24px var(--gutter);
+  padding: 24px var(--gutter-r) 24px var(--gutter);
   text-align: center;
   background: rgba(36, 20, 42, 0.88);
 }

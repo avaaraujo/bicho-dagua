@@ -15,6 +15,45 @@ import { createAudio } from './audio.js';
 import { Race, Showcase } from './race.js';
 
 const $ = (id) => document.getElementById(id);
+
+// Se algo quebrar (principalmente em celular), mostra o erro na tela para dar
+// para tirar print e corrigir, em vez de o jogo simplesmente parar.
+function showCrash(message) {
+  let box = document.querySelector('.crash-report');
+  if (!box) {
+    box = document.createElement('p');
+    box.className = 'crash-report';
+    box.setAttribute('role', 'alert');
+    document.body.append(box);
+  }
+  box.textContent = `Ops, deu um erro no jogo. Manda um print disto: ${message} · ${navigator.userAgent}`;
+}
+window.addEventListener('error', (e) => showCrash(`${e.message} (${(e.filename || '').split('/').pop()}:${e.lineno})`));
+window.addEventListener('unhandledrejection', (e) => showCrash(String(e.reason?.message || e.reason)));
+// iOS ignora user-scalable=no: bloqueia o gesto de pinça e o toque duplo, que
+// davam zoom no meio da corrida e jogavam os botões para fora da tela.
+document.addEventListener('gesturestart', (e) => e.preventDefault());
+document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
+let lastTouchEnd = 0;
+document.addEventListener('touchend', (e) => {
+  const now = Date.now();
+  if (now - lastTouchEnd < 350 && !(e.target instanceof HTMLInputElement)) e.preventDefault();
+  lastTouchEnd = now;
+}, { passive: false });
+// Ao girar o celular o Safari às vezes fica com zoom; reescrever a meta viewport
+// faz ele voltar para a escala 1.
+const viewportMeta = document.querySelector('meta[name="viewport"]');
+function resetZoom() {
+  const content = viewportMeta.content;
+  viewportMeta.content = `${content}, x-reset=1`;
+  requestAnimationFrame(() => {
+    viewportMeta.content = content;
+  });
+}
+window.addEventListener('orientationchange', () => setTimeout(resetZoom, 300));
+window.visualViewport?.addEventListener('resize', () => {
+  if (window.visualViewport.scale > 1.01) resetZoom();
+});
 const INTERNAL_HEIGHT = 560; // resolução interna baixa, ampliada com pixels nítidos
 const AUTOPILOT = new URLSearchParams(location.search).has('autopilot'); // só para testes automáticos
 
