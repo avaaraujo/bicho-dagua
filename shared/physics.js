@@ -89,7 +89,7 @@ function crash(b, nx, nz) {
   b.bump = 1;
 }
 
-// Paredes (mureta de fora e mureta do meio) e pilares de pedra.
+// Paredes: mureta de fora e mureta do meio.
 // Bater de frente para o barco; raspar de leve só tira um pouco de velocidade.
 export function collideWalls(b, track) {
   const p = projectOnTrack(track, b.x, b.z);
@@ -98,15 +98,6 @@ export function collideWalls(b, track) {
   let hit = 0;
   if (p.lateral > limit) hit = pushOut(b, -p.nx, -p.nz, p.lateral - limit);
   else if (p.lateral < -limit) hit = pushOut(b, p.nx, p.nz, -limit - p.lateral);
-  for (const o of track.obstacles || []) {
-    const dx = b.x - o.x;
-    const dz = b.z - o.z;
-    const min = o.r + BOAT_RADIUS;
-    const d2 = dx * dx + dz * dz;
-    if (d2 >= min * min || d2 < 1e-6) continue;
-    const d = Math.sqrt(d2);
-    hit = Math.max(hit, pushOut(b, dx / d, dz / d, min - d));
-  }
   return hit;
 }
 

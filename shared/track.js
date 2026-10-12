@@ -1,38 +1,30 @@
 // Pista: uma linha central fechada com largura fixa, no plano x/z (y = altura).
 // Uma piscina vista de cima: reta de largada embaixo, duas curvas fechadas de
-// 180° nas pontas, uma chicane em "lombada" na reta de cima e pilares de pedra
-// na água que obrigam a escolher por qual lado passar.
+// 180° nas pontas e uma chicane em "lombada" na reta de cima.
 
-export const TRACK_HALF_WIDTH = 6.5;
-const R = 10; // raio das curvas
+export const TRACK_HALF_WIDTH = 9.75;
+const R = 15; // raio das curvas
 const Q = Math.PI / 4;
 
 // Trechos da linha central. Ângulo negativo = vira para -z (para cima na tela).
 // Largada no meio da reta de baixo (perto da câmera), indo para +x.
 const SEGMENTS = [
-  { line: 22 },
+  { line: 33 },
   { arc: -Math.PI, r: R }, // curva da direita
-  { line: 4.93 },
+  { line: 7.4 },
   { arc: Q, r: R }, { arc: -Q, r: R }, // chicane: sobe...
-  { line: 5.86 }, // topo da lombada
+  { line: 8.79 }, // topo da lombada
   { arc: -Q, r: R }, { arc: Q, r: R }, // ...e desce
-  { line: 4.93 },
+  { line: 7.4 },
   { arc: -Math.PI, r: R }, // curva da esquerda
-  { line: 22 },
-];
-
-// Pilares de pedra: at = fração da volta, lateral = deslocamento (+ = para fora).
-const OBSTACLES = [
-  { at: 0.09, lateral: 0, r: 1.3 }, // antes da curva da direita
-  { at: 0.5, lateral: 0, r: 1.3 }, // no topo da chicane
-  { at: 0.88, lateral: 0, r: 1.3 }, // saindo da curva da esquerda
+  { line: 33 },
 ];
 
 // Percorre os trechos em passos de "step" metros e devolve os pontos.
 export function pathPoints(segments = SEGMENTS, step = 0.5) {
   const pts = [];
   let x = 0;
-  let z = 15;
+  let z = 22.5;
   let a = 0; // direção = (cos a, sin a)
   for (const seg of segments) {
     const len = seg.line ?? Math.abs(seg.arc) * seg.r;
@@ -48,7 +40,7 @@ export function pathPoints(segments = SEGMENTS, step = 0.5) {
   return pts;
 }
 
-export function buildTrack(raw = pathPoints(), halfWidth = TRACK_HALF_WIDTH, obstacles = OBSTACLES) {
+export function buildTrack(raw = pathPoints(), halfWidth = TRACK_HALF_WIDTH) {
   // Área com sinal: decide para que lado fica o "fora" da pista.
   let area = 0;
   for (let i = 0; i < raw.length; i++) {
@@ -98,10 +90,6 @@ export function buildTrack(raw = pathPoints(), halfWidth = TRACK_HALF_WIDTH, obs
   }
 
   const track = { samples, length: s, halfWidth, outwardSign };
-  track.obstacles = obstacles.map((o) => {
-    const p = pointAt(track, o.at * s, o.lateral);
-    return { x: p.x, z: p.z, r: o.r, s: o.at * s, lateral: o.lateral };
-  });
   // Caixa que envolve a piscina inteira (com a mureta de fora), para a câmera.
   const wall = halfWidth + 2.6;
   let minX = Infinity; let maxX = -Infinity; let minZ = Infinity; let maxZ = -Infinity;
@@ -171,7 +159,7 @@ export function wrapDelta(track, ds) {
 // Posições de largada: 2 x 2, atrás da linha de chegada (s = 0).
 export function gridSlots(track) {
   const slots = [];
-  const rows = [[-8, -3.6], [-8, 3.6], [-15, -3.6], [-15, 3.6]];
+  const rows = [[-8, -5.4], [-8, 5.4], [-15, -5.4], [-15, 5.4]];
   for (const [back, side] of rows) {
     const p = pointAt(track, back, side);
     slots.push({ x: p.x, z: p.z, h: Math.atan2(p.tx, p.tz), total: back });

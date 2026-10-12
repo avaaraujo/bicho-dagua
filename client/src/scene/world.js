@@ -27,10 +27,12 @@ const PAL = {
   cream: '#fff4dc',
 };
 
+const SCENERY_SCALE = 1.5; // acompanha a pista, que cresceu 50%
+
 export function buildWorld(scene, track) {
   const animated = [];
   scene.background = new THREE.Color(PAL.skyMid);
-  scene.fog = new THREE.Fog(PAL.fog, 120, 380);
+  scene.fog = new THREE.Fog(PAL.fog, 180, 570);
 
   scene.add(new THREE.HemisphereLight(0xffe6f0, 0x2f8f8a, 1.5));
   const sun = new THREE.DirectionalLight(0xffe2b8, 1.9);
@@ -46,21 +48,23 @@ export function buildWorld(scene, track) {
 
   scene.add(poolWalls(track));
   scene.add(finishLine(track));
-  const pillars = rockPillars(track);
-  scene.add(pillars.group);
-  animated.push(pillars.update);
+
+  // Cenário em volta da piscina, na mesma escala da pista.
+  const scenery = new THREE.Group();
+  scenery.scale.setScalar(SCENERY_SCALE);
+  scene.add(scenery);
 
   // Baleia gigante atrás da pista, de frente para a câmera.
   const whale = whaleStatue();
   whale.scale.setScalar(1.7);
   whale.position.set(0, -1, -40);
-  scene.add(whale);
-  scene.add(islets());
+  scenery.add(whale);
+  scenery.add(islets());
 
   const cliffs = cliffRing();
-  scene.add(cliffs.mesh);
+  scenery.add(cliffs.mesh);
   const falls = cascades(cliffs);
-  scene.add(falls.group);
+  scenery.add(falls.group);
   animated.push(falls.update);
 
   return {
@@ -307,33 +311,6 @@ function cascades(cliffs) {
       foams.forEach((f, i) => {
         const s = 1 + Math.sin(t * 6 + i) * 0.12;
         f.scale.set(4 * s, 0.9, 3 * s);
-      });
-    },
-  };
-}
-
-// Pilares de pedra no meio da pista: bater neles para o barco.
-function rockPillars(track) {
-  const group = new THREE.Group();
-  const foams = [];
-  track.obstacles.forEach((o, i) => {
-    const g = new THREE.Group();
-    g.add(part(new THREE.CylinderGeometry(o.r * 0.95, o.r * 1.1, 2.2, 7), PAL.rockLow, [0, 0.6, 0], [0, hash(i) * 3, 0]));
-    g.add(part(new THREE.DodecahedronGeometry(o.r * 0.85, 0), PAL.rock, [0, 2.1, 0], [hash(i + 1) * 3, hash(i + 2) * 3, 0]));
-    g.add(part(new THREE.CylinderGeometry(0.12, 0.12, 2.4, 5), PAL.cream, [0, 3.6, 0]));
-    g.add(part(new THREE.OctahedronGeometry(0.45, 0), PAL.magma, [0, 5, 0]));
-    const foam = part(new THREE.TorusGeometry(o.r * 1.15, 0.22, 3, 10), '#ffffff', [0, 0.12, 0], [Math.PI / 2, 0, 0]);
-    g.add(foam);
-    foams.push(foam);
-    g.position.set(o.x, 0, o.z);
-    group.add(g);
-  });
-  return {
-    group,
-    update(t) {
-      foams.forEach((f, i) => {
-        const k = 1 + Math.sin(t * 3 + i * 2) * 0.08;
-        f.scale.set(k, k, 1);
       });
     },
   };

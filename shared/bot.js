@@ -1,7 +1,7 @@
 // Piloto automático: mira num ponto à frente na pista, numa "faixa" própria,
-// desvia dos pilares e dos outros barcos, e freia antes das curvas, porque
+// desvia dos outros barcos e freia antes das curvas, porque
 // qualquer batida para o barco.
-import { pointAt, wrapDelta } from './track.js';
+import { pointAt } from './track.js';
 import { forwardSpeed, MAX_SPEED, BOAT_RADIUS } from './physics.js';
 
 const PLAN_BRAKE = 18; // m/s² que o bot conta poder frear ao planejar
@@ -33,26 +33,7 @@ export function botInput(b, brain, track, dt, leaderTotal, others = []) {
     brain.laneTarget = (brain.rand() - 0.5) * hw * 0.9;
   }
 
-  // Desvia dos pilares que estão chegando. O lado é escolhido uma vez por
-  // pilar (senão o bot fica indeciso e acerta o pilar no meio).
   let goal = brain.laneTarget;
-  brain.sides = brain.sides || {};
-  (track.obstacles || []).forEach((o, k) => {
-    const gap = wrapDelta(track, o.s - (b.s ?? 0));
-    if (gap < -4 || gap > 30) {
-      delete brain.sides[k];
-      return;
-    }
-    if (!brain.sides[k]) {
-      const cur = b._proj ? b._proj.lateral : brain.lane;
-      brain.sides[k] = Math.sign(cur - o.lateral) || (brain.rand() < 0.5 ? -1 : 1);
-    }
-    const clear = o.r + BOAT_RADIUS + 1.2;
-    const pass = Math.max(-maxLane, Math.min(maxLane, o.lateral + brain.sides[k] * clear));
-    goal = pass;
-    brain.pass = brain.pass || {};
-    brain.pass[k] = pass;
-  });
 
   // Quem está logo à frente na mesma faixa: segue sem encostar e, se der,
   // muda de faixa para passar.
@@ -78,18 +59,8 @@ export function botInput(b, brain, track, dt, leaderTotal, others = []) {
   // Por dentro da curva fica mais curto: puxa a faixa para o lado de dentro,
   // mas sem colar na mureta (a linha reta até o alvo corta a curva).
   const aimLane = maxLane - 1.4;
-  let lane = Math.max(-aimLane, Math.min(aimLane, brain.lane + Math.sign(here.turn) * Math.min(2, Math.abs(here.turn) * 2.5)));
-  // O desvio dos pilares vale mais que o atalho da curva.
-  (track.obstacles || []).forEach((o, k) => {
-    if (brain.sides[k] !== undefined) lane = brain.pass[k];
-  });
-  let target = pointAt(track, b.total + ahead, lane);
-  // Pilar entre o barco e o alvo: mira direto no "portão" ao lado dele.
-  (track.obstacles || []).forEach((o, k) => {
-    const gap = wrapDelta(track, o.s - (b.s ?? 0));
-    if (brain.sides[k] === undefined || gap < -3 || gap > ahead + 3) return;
-    target = pointAt(track, o.s + 5, brain.pass[k]);
-  });
+  const lane = Math.max(-aimLane, Math.min(aimLane, brain.lane + Math.sign(here.turn) * Math.min(2, Math.abs(here.turn) * 2.5)));
+  const target = pointAt(track, b.total + ahead, lane);
 
   const desired = Math.atan2(target.x - b.x, target.z - b.z);
   let diff = desired - b.h;
