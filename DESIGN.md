@@ -1,4 +1,4 @@
-# Design: Turbo Cratera
+# Design: Bicho d'Água
 
 Visual direction: **late-90s console played on a CRT TV** (key visual 3, `docs/keyvisuals/03-lowpoly-anos-90.jpg`). It should look like a beloved cartridge, not a modern mobile racer and not a clone of any franchise.
 

@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: turbo-cratera
+    name: bicho-dagua
     runtime: node
     plan: free
     buildCommand: npm ci && npm run build

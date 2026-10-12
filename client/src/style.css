@@ -96,7 +96,7 @@ input { caret-color: var(--magma); }
   display: flex;
   flex-direction: column;
   align-items: center;
-  line-height: 0.88;
+  line-height: 0.98;
   text-transform: uppercase;
   transform: rotate(-3deg);
 }
@@ -191,6 +191,7 @@ input:focus { border-color: var(--teal); outline: none; }
 .form-error { margin: 0; min-height: 1.2em; color: var(--danger); font-weight: 800; }
 .form-error:empty { display: none; }
 
+body.is-touch .controls-hint { display: none; }
 .controls-hint {
   margin: 0;
   max-width: 46ch;

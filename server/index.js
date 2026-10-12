@@ -88,5 +88,5 @@ io.on('connection', (socket) => {
 });
 
 http.listen(PORT, () => {
-  console.log(`Turbo Cratera rodando em http://localhost:${PORT}`);
+  console.log(`Bicho d'Água rodando em http://localhost:${PORT}`);
 });

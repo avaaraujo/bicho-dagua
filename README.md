@@ -1,4 +1,4 @@
-# Turbo Cratera
+# Bicho d'Água
 
 A jet-ski race inside a volcano for up to 4 friends, played in the browser. The look is a late-90s console game, built with Three.js. The first to finish 5 laps wins. If nobody finishes within 3 minutes, the race is a draw. Empty slots are filled by bots.
 
@@ -35,7 +35,7 @@ The repository includes `render.yaml`. One Node service serves both the game and
 
 1. On [render.com](https://render.com), click **New → Blueprint** and choose this repository.
 2. Render reads `render.yaml`. Confirm the **Free** plan and create the service.
-3. When the deploy finishes, share the `https://turbo-cratera.onrender.com` link (or whatever name Render assigns).
+3. When the deploy finishes, share the `https://bicho-dagua.onrender.com` link (or whatever name Render assigns).
 
 On the free plan the server sleeps after 15 minutes without players. The first visit after that takes about 1 minute to wake it up.
 
