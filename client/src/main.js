@@ -104,7 +104,9 @@ const portraits = {};
 // ---------- rede ----------
 function connect() {
   if (app.socket) return app.socket;
-  const socket = io({ transports: ['websocket', 'polling'] });
+  // Tenta WebSocket primeiro (mais rápido); se a rede bloquear (proxy de
+  // empresa, escola, Wi-Fi público), cai para polling HTTP em vez de travar.
+  const socket = io({ transports: ['websocket', 'polling'], tryAllTransports: true });
   app.socket = socket;
   const overlayTimer = setTimeout(() => {
     if (!socket.connected) $('overlay-connect').hidden = false;
