@@ -28,7 +28,13 @@ function showCrash(message) {
   }
   box.textContent = `Ops, deu um erro no jogo. Manda um print disto: ${message} · ${navigator.userAgent}`;
 }
-window.addEventListener('error', (e) => showCrash(`${e.message} (${(e.filename || '').split('/').pop()}:${e.lineno})`));
+window.addEventListener('error', (e) => {
+  // "Script error." sem arquivo vem de script de fora do jogo (extensão,
+  // preenchimento automático do Safari): o navegador esconde os detalhes e o
+  // jogo segue funcionando, então não vale cobrir a tela com o aviso.
+  if (!e.filename && !e.error) return;
+  showCrash(`${e.message} (${(e.filename || '').split('/').pop()}:${e.lineno})`);
+});
 window.addEventListener('unhandledrejection', (e) => showCrash(String(e.reason?.message || e.reason)));
 // iOS ignora user-scalable=no: bloqueia o gesto de pinça e o toque duplo, que
 // davam zoom no meio da corrida e jogavam os botões para fora da tela.
