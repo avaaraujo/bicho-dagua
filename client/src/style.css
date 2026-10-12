@@ -461,6 +461,34 @@ body.is-racing .mute { right: auto; left: 50%; transform: translateX(-50%); }
 }
 .toast.is-on { transform: translate(-50%, 0); visibility: visible; transition-delay: 0s; }
 
+/* Celular em pé na sala ou na corrida: pede para deitar */
+.rotate { display: none; }
+@media (orientation: portrait) {
+  body.is-touch.wants-landscape:not(.rotate-skipped) .rotate {
+    position: fixed;
+    inset: 0;
+    z-index: 25;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 24px var(--gutter);
+    text-align: center;
+    background: var(--plum-deep);
+  }
+}
+.rotate-phone { width: 120px; height: 120px; fill: none; stroke: var(--cream); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.rotate-phone rect { fill: var(--plum); }
+.rotate-arrow { stroke: var(--magma); }
+.rotate-phone { animation: tilt 2.4s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+@keyframes tilt {
+  0%, 25% { transform: rotate(0deg); }
+  55%, 85% { transform: rotate(-90deg); }
+  100% { transform: rotate(0deg); }
+}
+.rotate-title { margin: 0; font-size: clamp(2.2rem, 10vw, 3.2rem); text-transform: uppercase; }
+
 .overlay {
   position: fixed;
   inset: 0;
@@ -486,4 +514,5 @@ body.is-racing .mute { right: auto; left: 50%; transform: translateX(-50%); }
 @media (prefers-reduced-motion: reduce) {
   .hud-banner, .toast, .btn { transition: none; }
   .hud-banner[data-tone='warn'].is-on { animation: none; }
+  .rotate-phone { animation: none; transform: rotate(-90deg); }
 }

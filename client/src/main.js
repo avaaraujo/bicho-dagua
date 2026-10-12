@@ -61,7 +61,10 @@ const screens = ['screen-home', 'screen-lobby', 'screen-results'];
 function showScreen(id) {
   for (const s of screens) $(s).hidden = s !== id;
   document.body.classList.toggle('is-racing', id === null);
+  // Aviso de "deite o celular": na sala e na corrida, não na tela inicial.
+  document.body.classList.toggle('wants-landscape', id === null || id === 'screen-lobby');
 }
+$('btn-rotate-skip').addEventListener('click', () => document.body.classList.add('rotate-skipped'));
 
 let toastTimer = 0;
 function toast(text) {

@@ -43,6 +43,7 @@ Visual direction: **late-90s console played on a CRT TV** (key visual 3, `docs/k
 - Top right: time remaining, turning yellow in the last 20 s.
 - Center: countdown, **VAI!**, **VOLTA FINAL!**, **CONTRAMÃO!** (blinking) and **CHEGOU!**.
 - On touch screens, the position moves up so the buttons fit at the bottom. With the phone upright, **Ré** sits above **Acelerar**.
+- **Phone upright** in the lobby or during a race: a full-screen **Deite o celular** notice appears, with an animated rotating phone. It disappears on its own once the phone is turned, and **Jogar em pé mesmo** dismisses it for the session. It does not appear on the home screen, where typing a name is easier with the phone upright.
 
 ## Components
 
