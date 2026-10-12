@@ -17,7 +17,15 @@ const io = new Server(http, { pingInterval: 10000, pingTimeout: 8000 });
 
 app.get('/healthz', (_req, res) => res.send('ok'));
 if (existsSync(dist)) {
-  app.use(express.static(dist, { maxAge: '1h', index: 'index.html' }));
+  // Arquivos em /assets têm hash no nome e podem ficar em cache; a página
+  // principal não, senão o navegador continua abrindo a versão antiga.
+  app.use(express.static(dist, {
+    index: 'index.html',
+    setHeaders(res, file) {
+      if (file.includes(`${path.sep}assets${path.sep}`)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      else res.setHeader('Cache-Control', 'no-cache');
+    },
+  }));
 }
 
 const rooms = new Map();
