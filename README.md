@@ -11,13 +11,13 @@ All characters, art, sounds and names are original.
 3. Each player picks a racer: Morsa, Garça, Sapo or Cabra.
 4. The host clicks **Largar!**.
 
-| | Steer | Accelerate |
-|---|---|---|
-| Keyboard | ← → or A / D | ↑, W or Space |
-| Phone | on-screen ‹ › buttons | **Acelerar** button |
-| Gamepad | left stick or d-pad | A or RT |
+| | Steer | Accelerate | Brake / reverse |
+|---|---|---|---|
+| Keyboard | **A** / **D** (or ← →) | **J** (or ↑) | **K** (or ↓) |
+| Phone | on-screen ‹ › buttons | **Acelerar** button | **Ré** button |
+| Gamepad | left stick or d-pad | A or RT | B or LT |
 
-Taking a corner too fast throws you into the wall and costs speed. If you turn around, **CONTRAMÃO!** appears on screen.
+The track is a pool-shaped oval with a wall down the middle, and a race lasts about 1 minute. As in the original minigame, the camera is fixed overhead and shows the whole track. Steering is relative to the jet-ski, so when it is heading toward the screen, left and right feel reversed; that is the challenge. Taking a corner too fast throws you into the wall and costs speed. If you turn around, **CONTRAMÃO!** appears on screen. After you cross the finish line, the camera moves behind your jet-ski, which keeps lapping on its own while the others finish.
 
 ## Running locally
 

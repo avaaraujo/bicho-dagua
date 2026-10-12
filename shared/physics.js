@@ -4,12 +4,15 @@ import { projectOnTrack, wrapDelta } from './track.js';
 import { LAPS } from './constants.js';
 
 export const BOAT_RADIUS = 1.5;
-export const ACCEL = 21;
-export const DRAG = 0.78; // velocidade máxima ≈ ACCEL / DRAG ≈ 27 m/s
+export const ACCEL = 17;
+export const DRAG = 0.78; // velocidade máxima ≈ ACCEL / DRAG ≈ 22 m/s
 export const COAST_DRAG = 1.2;
 export const GRIP = 2.4; // quanto da derrapagem lateral some por segundo
 export const TURN_RATE = 2.35; // rad/s no melhor ponto
 export const MAX_SPEED = ACCEL / DRAG;
+export const BRAKE = 26; // m/s² freando
+export const REVERSE_ACCEL = 9;
+export const MAX_REVERSE = 6;
 
 // h = direção. Frente = (sin h, cos h). Direita = (-cos h, sin h).
 export function createBoat(slot) {
@@ -40,15 +43,24 @@ export function stepBoat(b, input, dt, track, speedMul = 1) {
   // Volante com um pouco de inércia, para não ser digital demais.
   b.steer += (input.steer - b.steer) * Math.min(1, dt * 10);
 
+  // throttle: 1 = acelera, 0 = solta, negativo = freia e, quase parado, dá ré.
   const throttle = input.throttle;
-  fwd += ACCEL * speedMul * throttle * dt;
+  if (throttle >= 0) {
+    fwd += ACCEL * speedMul * throttle * dt;
+  } else if (fwd > 0.5) {
+    fwd = Math.max(0, fwd + BRAKE * throttle * dt);
+  } else {
+    fwd += REVERSE_ACCEL * throttle * dt;
+  }
   fwd -= fwd * (throttle > 0.05 ? DRAG : COAST_DRAG) * dt;
-  if (fwd < -4) fwd = -4;
+  if (fwd < -MAX_REVERSE) fwd = -MAX_REVERSE;
 
   // Vira melhor em velocidade média; parado ainda gira devagar; muito rápido perde força.
+  // De ré o barco gira para o outro lado, como um carro.
   const sp = Math.abs(fwd) / MAX_SPEED;
   const turnFactor = 0.38 + 0.9 * Math.min(1, sp * 2.2) - 0.32 * sp * sp;
-  b.h -= b.steer * TURN_RATE * turnFactor * dt;
+  const dir = fwd < -0.5 ? -1 : 1;
+  b.h -= b.steer * TURN_RATE * turnFactor * dir * dt;
 
   lat *= Math.exp(-GRIP * dt);
 

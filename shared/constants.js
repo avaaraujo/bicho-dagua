@@ -3,7 +3,7 @@
 export const LAPS = 5;
 export const MAX_PLAYERS = 4;
 export const RACE_TIME_LIMIT = 180; // segundos; ninguém terminou = empate
-export const AFTER_FIRST_FINISH = 15; // segundos que os outros têm depois do 1º chegar
+export const AFTER_FIRST_FINISH = 10; // segundos que os outros têm depois do 1º chegar
 export const COUNTDOWN_MS = 3500;
 export const TICK_RATE = 20; // snapshots por segundo
 export const PHYSICS_DT = 1 / 60;

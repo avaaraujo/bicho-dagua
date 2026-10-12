@@ -299,14 +299,36 @@ input:focus { border-color: var(--teal); outline: none; }
   padding: 4px 12px;
 }
 .hud-time.is-low { color: var(--magma-hot); }
-#hud-radar {
+.hud-board {
   position: absolute;
-  left: var(--gutter);
-  bottom: max(16px, env(safe-area-inset-bottom));
-  width: clamp(110px, 18vmin, 180px);
-  height: auto;
-  aspect-ratio: 1;
+  top: calc(max(14px, env(safe-area-inset-top)) + 54px);
+  right: var(--gutter);
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+  min-width: 190px;
+  background: rgba(36, 20, 42, 0.78);
+  border: 3px solid var(--plum-deep);
+  border-radius: 12px;
 }
+.hud-board li {
+  display: grid;
+  grid-template-columns: 30px 12px 1fr auto;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px 3px 4px;
+  border-radius: 8px;
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+.hud-board li.is-me { background: rgba(25, 195, 180, 0.28); box-shadow: inset 0 0 0 2px var(--teal); }
+.board-pos { font-family: var(--display); text-align: center; color: var(--cream); }
+.board-chip { width: 12px; height: 12px; border-radius: 3px; border: 2px solid var(--plum-deep); }
+.board-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 9ch; }
+.board-lap { font-variant-numeric: tabular-nums; color: var(--peach); }
+
 .hud-place {
   position: absolute;
   right: var(--gutter);
@@ -363,9 +385,39 @@ input:focus { border-color: var(--teal); outline: none; }
 .touch-gas svg { stroke: var(--plum-deep); width: 40px; height: 40px; }
 .touch-gas span { font: 400 0.85rem var(--display); color: var(--plum-deep); text-transform: uppercase; }
 .touch-gas.is-pressed { background: var(--magma-hot); }
+.touch-brake {
+  right: calc(var(--gutter) + 124px);
+  width: 76px;
+  height: 76px;
+  align-content: center;
+  gap: 0;
+}
+.touch-brake svg { width: 34px; height: 34px; }
+.touch-brake span { font: 400 0.8rem var(--display); color: var(--cream); text-transform: uppercase; }
 
-/* Em telas de toque o radar e a colocação sobem, para dar lugar aos botões */
-body.is-touch #hud-radar { top: calc(max(14px, env(safe-area-inset-top)) + 54px); bottom: auto; left: auto; right: var(--gutter); width: 104px; }
+/* celular em pé: o Ré sobe para cima do Acelerar, longe dos botões de virar */
+@media (orientation: portrait) {
+  .touch-brake { right: calc(var(--gutter) + 18px); bottom: calc(max(18px, env(safe-area-inset-bottom)) + 124px); }
+}
+
+kbd {
+  display: inline-block;
+  min-width: 1.7em;
+  padding: 1px 5px;
+  font: 400 0.85rem var(--display);
+  text-align: center;
+  color: var(--plum-deep);
+  background: var(--cream);
+  border: 2px solid var(--plum-deep);
+  border-radius: 6px;
+  box-shadow: inset 0 -2px 0 var(--cream-dim);
+  text-shadow: none;
+}
+
+/* Em telas de toque a colocação sobe, para dar lugar aos botões */
+body.is-touch .hud-board { min-width: 0; padding: 4px; gap: 2px; }
+body.is-touch .hud-board li { font-size: 0.8rem; grid-template-columns: 22px 10px auto; padding: 1px 6px 1px 2px; }
+body.is-touch .board-name { display: none; }
 body.is-touch .hud-place { top: calc(max(14px, env(safe-area-inset-top)) + 112px); bottom: auto; left: var(--gutter); right: auto; font-size: clamp(3rem, 10vw, 5rem); }
 
 .mute {
@@ -386,6 +438,8 @@ body.is-touch .hud-place { top: calc(max(14px, env(safe-area-inset-top)) + 112px
 .mute .icon-off, .mute[aria-pressed='true'] .icon-on { display: none; }
 .mute[aria-pressed='true'] .icon-off { display: block; }
 body.is-racing .mute { right: auto; left: 50%; transform: translateX(-50%); }
+
+
 
 .toast:empty { visibility: hidden; }
 .toast {

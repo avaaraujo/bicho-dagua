@@ -1,5 +1,5 @@
-// A cratera: água, ilha central com a estátua da baleia, paredões de rocha,
-// cachoeiras, rios de lava, céu de fim de tarde e a linha de chegada.
+// A piscina de corrida dentro da cratera: água, muretas xadrez, baleia gigante
+// ao fundo, paredões com cachoeiras e lava, céu de fim de tarde.
 import * as THREE from 'three';
 import { part, flat, canvasTexture, hash, mixColor, vertexColorMaterial } from './lowpoly.js';
 import { pointAt } from '../../../shared/track.js';
@@ -20,6 +20,9 @@ const PAL = {
   skyLow: '#f3b6a0',
   fog: '#c4a2c6',
   stone: '#9a9387',
+  violet: '#9a7fd1',
+  violetDark: '#6b4fa0',
+  sand: '#e8c98f',
   plum: '#3b2440',
   cream: '#fff4dc',
 };
@@ -27,36 +30,35 @@ const PAL = {
 export function buildWorld(scene, track) {
   const animated = [];
   scene.background = new THREE.Color(PAL.skyMid);
-  scene.fog = new THREE.Fog(PAL.fog, 110, 360);
+  scene.fog = new THREE.Fog(PAL.fog, 120, 380);
 
   scene.add(new THREE.HemisphereLight(0xffe6f0, 0x2f8f8a, 1.5));
   const sun = new THREE.DirectionalLight(0xffe2b8, 1.9);
-  sun.position.set(60, 120, -40);
+  sun.position.set(40, 120, 60);
   scene.add(sun);
 
   scene.add(sky());
 
-  const center = interiorCenter(track);
+  const center = { x: 0, z: 0 };
   const water = waterPlane(center);
   scene.add(water.mesh);
   animated.push(water.update);
 
-  scene.add(island(track));
+  scene.add(poolWalls(track));
+  scene.add(finishLine(track));
+
+  // Baleia gigante atrás da pista, de frente para a câmera.
   const whale = whaleStatue();
-  whale.position.set(center.x, 1.5, center.z);
-  whale.rotation.y = Math.PI * 0.85;
+  whale.scale.setScalar(1.7);
+  whale.position.set(0, -1, -40);
   scene.add(whale);
-  scene.add(islandDecor(track, center));
+  scene.add(islets());
 
-  const cliffs = cliffRing(track, center);
+  const cliffs = cliffRing();
   scene.add(cliffs.mesh);
-
   const falls = cascades(cliffs);
   scene.add(falls.group);
   animated.push(falls.update);
-
-  scene.add(finishLine(track));
-  scene.add(cornerSigns(track));
 
   return {
     center,
@@ -78,16 +80,6 @@ function sky() {
   g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false }));
   return m;
-}
-
-function interiorCenter(track) {
-  let x = 0;
-  let z = 0;
-  for (const s of track.samples) {
-    x += s.x;
-    z += s.z;
-  }
-  return { x: x / track.samples.length, z: z / track.samples.length };
 }
 
 function waterPlane(center) {
@@ -124,22 +116,32 @@ function boundary(track, lateral, step = 4) {
   return pts;
 }
 
-function island(track) {
-  const pts = boundary(track, -(track.halfWidth + 0.15), 3);
-  const shape = new THREE.Shape(pts.map((p) => new THREE.Vector2(p.x, -p.z)));
-  const g = new THREE.ExtrudeGeometry(shape, { depth: 3.4, bevelEnabled: false, curveSegments: 1 });
-  g.rotateX(-Math.PI / 2);
-  g.translate(0, -1.2, 0);
-  const mesh = new THREE.Mesh(g, [flat(PAL.jungle), flat(PAL.rock)]);
-  // segundo degrau de grama, mais para dentro
-  const inner = boundary(track, -(track.halfWidth + 5), 6);
-  const shape2 = new THREE.Shape(inner.map((p) => new THREE.Vector2(p.x, -p.z)));
-  const g2 = new THREE.ExtrudeGeometry(shape2, { depth: 1.4, bevelEnabled: false, curveSegments: 1 });
-  g2.rotateX(-Math.PI / 2);
-  g2.translate(0, 2.2, 0);
-  const top = new THREE.Mesh(g2, [flat(PAL.jungleDark), flat(PAL.rockHigh)]);
+function checkerTexture(a, b, repeat) {
+  return canvasTexture(2, 2, (ctx) => {
+    ctx.fillStyle = a;
+    ctx.fillRect(0, 0, 2, 2);
+    ctx.fillStyle = b;
+    ctx.fillRect(0, 0, 1, 1);
+    ctx.fillRect(1, 1, 1, 1);
+  }, { repeat: [repeat, repeat] });
+}
+
+// Bordas da piscina: a mureta de fora e a mureta do meio, com topo xadrez.
+function poolWalls(track) {
+  const top = new THREE.MeshLambertMaterial({ map: checkerTexture(PAL.violet, PAL.violetDark, 0.45) });
+  const side = flat(PAL.plum);
+  const toV2 = (pts) => pts.map((p) => new THREE.Vector2(p.x, -p.z));
+  const extrude = (shape) => {
+    const g = new THREE.ExtrudeGeometry(shape, { depth: 2, bevelEnabled: false, curveSegments: 1 });
+    g.rotateX(-Math.PI / 2);
+    g.translate(0, -0.8, 0);
+    return new THREE.Mesh(g, [top, side]);
+  };
+  const outer = new THREE.Shape(toV2(boundary(track, track.halfWidth + 2.6, 1)));
+  outer.holes.push(new THREE.Path(toV2(boundary(track, track.halfWidth + 0.1, 1))));
+  const middle = new THREE.Shape(toV2(boundary(track, -(track.halfWidth + 0.1), 1)));
   const group = new THREE.Group();
-  group.add(mesh, top);
+  group.add(extrude(outer), extrude(middle));
   return group;
 }
 
@@ -186,48 +188,36 @@ function palm(x, z, h, seed) {
   return g;
 }
 
-function islandDecor(track, center) {
+// Ilhotas com coqueiros e pedras entre a piscina e o paredão.
+function islets() {
   const g = new THREE.Group();
-  const ring = boundary(track, -(track.halfWidth + 9), 22);
-  ring.forEach((p, i) => {
-    const d = Math.hypot(p.x - center.x, p.z - center.z);
-    if (d < 14) return;
-    if (i % 2 === 0) g.add(palm(p.x, p.z, 6 + hash(i) * 4, i));
-    else g.add(part(new THREE.DodecahedronGeometry(1.4 + hash(i) * 1.2, 0), PAL.rockLow, [p.x, 3.4, p.z], [hash(i) * 3, hash(i + 1) * 3, 0]));
+  const spots = [[-62, -24], [64, -28], [-70, 16], [68, 12], [-34, -42], [36, -44]];
+  spots.forEach(([x, z], i) => {
+    g.add(part(new THREE.CylinderGeometry(5 + hash(i) * 3, 7 + hash(i) * 3, 2.4, 7), PAL.sand, [x, 0, z]));
+    g.add(part(new THREE.CylinderGeometry(3.5, 5, 1.2, 7), PAL.jungle, [x, 1.4, z]));
+    g.add(palm(x + 1, z, 7 + hash(i + 3) * 4, i));
+    g.add(part(new THREE.DodecahedronGeometry(1.6, 0), PAL.rockLow, [x - 2.5, 2, z + 1.5], [hash(i) * 3, hash(i + 1) * 3, 0]));
   });
   return g;
 }
 
-// Paredão: anéis que saem da borda da pista e se abrem num círculo alto.
-function cliffRing(track, center) {
-  const base = boundary(track, track.halfWidth + 0.15, 4);
+// Paredão da cratera: anéis em elipse ao redor da piscina, abrindo para cima.
+function cliffRing(n = 64) {
+  const RX = 92;
+  const RZ = 66;
   const rings = [
-    { off: 0, y: -2, toCircle: 0 },
-    { off: 0.9, y: 2.2, toCircle: 0 },
-    { off: 4, y: 7, toCircle: 0.1, jitter: 1.5 },
-    { off: 12, y: 18, toCircle: 0.4, jitter: 4 },
-    { off: 26, y: 31, toCircle: 0.8, jitter: 5 },
-    { off: 40, y: 38, toCircle: 1, jitter: 6, radius: 175 },
-    { off: 60, y: 30, toCircle: 1, jitter: 3, radius: 230 },
+    { s: 1, y: -2 }, { s: 1.04, y: 3 }, { s: 1.14, y: 10, j: 2 }, { s: 1.3, y: 21, j: 4 },
+    { s: 1.55, y: 33, j: 5 }, { s: 1.9, y: 41, j: 6 }, { s: 2.5, y: 32, j: 3 },
   ];
-  const grid = rings.map((ring, ri) => base.map((p, i) => {
-    let x = p.x + p.nx * ring.off;
-    let z = p.z + p.nz * ring.off;
-    if (ring.toCircle > 0) {
-      const dx = p.x - center.x;
-      const dz = p.z - center.z;
-      const d = Math.hypot(dx, dz) || 1;
-      const R = ring.radius ?? Math.max(d + ring.off, 130 + ri * 12);
-      x += (center.x + (dx / d) * R - x) * ring.toCircle;
-      z += (center.z + (dz / d) * R - z) * ring.toCircle;
-    }
-    const y = ring.y + (ring.jitter ? (hash(i * 7 + ri * 31) - 0.5) * 2 * ring.jitter : 0);
-    return new THREE.Vector3(x, y, z);
+  const grid = rings.map((ring, ri) => Array.from({ length: n }, (_, i) => {
+    const a = (i / n) * Math.PI * 2;
+    const wob = 1 + (hash(i * 3 + ri) - 0.5) * 0.06;
+    const y = ring.y + (ring.j ? (hash(i * 7 + ri * 31) - 0.5) * 2 * ring.j : 0);
+    return new THREE.Vector3(Math.cos(a) * RX * ring.s * wob, y, Math.sin(a) * RZ * ring.s * wob);
   }));
 
   const pos = [];
   const col = [];
-  const n = base.length;
   const faceColor = (y, ri, i) => {
     const noise = hash(i * 13 + ri * 7);
     if (ri === 1 && noise > 0.55) return new THREE.Color(PAL.jungle);
@@ -252,8 +242,7 @@ function cliffRing(track, center) {
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   g.computeVertexNormals();
-  const mesh = new THREE.Mesh(g, vertexColorMaterial);
-  return { mesh, grid, n };
+  return { mesh: new THREE.Mesh(g, vertexColorMaterial), grid, n };
 }
 
 function stripeTexture(colors, speed) {
@@ -295,16 +284,16 @@ function cascades(cliffs) {
   const lavaMat = new THREE.MeshBasicMaterial({ map: lavaTex, side: THREE.DoubleSide, fog: false });
   const n = cliffs.n;
   const foams = [];
-  for (let k = 0; k < 4; k++) {
-    const i = Math.floor(((k + 0.15) / 4) * n);
+  for (const frac of [0.6, 0.69, 0.81, 0.9]) {
+    const i = Math.floor(frac * n);
     const f = fallStrip(cliffs.grid, i, 1, 4, 7, waterMat);
     group.add(f.mesh);
     const foam = part(new THREE.IcosahedronGeometry(1, 0), '#ffffff', [f.bottom.x, 0.5, f.bottom.z], [0, 0, 0], [4, 0.9, 3]);
     foams.push(foam);
     group.add(foam);
   }
-  for (let k = 0; k < 5; k++) {
-    const i = Math.floor(((k + 0.62) / 5) * n);
+  for (const [k, frac] of [0.55, 0.65, 0.73, 0.78, 0.86, 0.95].entries()) {
+    const i = Math.floor(frac * n);
     group.add(fallStrip(cliffs.grid, i, 3, 5, 3.5 + (k % 2) * 2, lavaMat).mesh);
   }
   return {
@@ -320,6 +309,7 @@ function cascades(cliffs) {
   };
 }
 
+// Faixa xadrez na água e um mastro com bandeira na mureta do meio.
 function finishLine(track) {
   const g = new THREE.Group();
   const p = pointAt(track, 0, 0);
@@ -330,72 +320,21 @@ function finishLine(track) {
       ctx.fillRect(x, y, 1, 1);
     }
   });
-  const width = track.halfWidth * 2;
-  const line = new THREE.Mesh(new THREE.PlaneGeometry(width, 1.6), new THREE.MeshBasicMaterial({ map: checker, transparent: true, opacity: 0.85 }));
+  const line = new THREE.Mesh(
+    new THREE.PlaneGeometry(track.halfWidth * 2, 1.4),
+    new THREE.MeshBasicMaterial({ map: checker, transparent: true, opacity: 0.9 }),
+  );
   line.rotation.x = -Math.PI / 2;
-  const lineHolder = new THREE.Group();
-  lineHolder.add(line);
-  lineHolder.position.set(p.x, 0.06, p.z);
-  lineHolder.rotation.y = heading;
-  g.add(lineHolder);
+  const holder = new THREE.Group();
+  holder.add(line);
+  holder.position.set(p.x, 0.06, p.z);
+  holder.rotation.y = heading;
+  g.add(holder);
 
-  const arch = new THREE.Group();
-  for (const s of [-1, 1]) {
-    arch.add(part(new THREE.BoxGeometry(1.2, 11, 1.2), PAL.plum, [s * (track.halfWidth + 0.8), 5, 0]));
-    arch.add(part(new THREE.BoxGeometry(1.8, 0.6, 1.8), PAL.magma, [s * (track.halfWidth + 0.8), 11, 0]));
-  }
-  const banner = new THREE.Mesh(new THREE.BoxGeometry(width + 3, 2.4, 0.5), [
-    flat(PAL.plum), flat(PAL.plum), flat(PAL.plum), flat(PAL.plum),
-    new THREE.MeshLambertMaterial({ map: checker }), new THREE.MeshLambertMaterial({ map: checker }),
-  ]);
-  banner.position.y = 9.6;
-  arch.add(banner);
-  arch.position.set(p.x, 0, p.z);
-  arch.rotation.y = heading;
-  g.add(arch);
-  return g;
-}
-
-function chevronTexture(pointRight) {
-  return canvasTexture(32, 16, (ctx, w, h) => {
-    ctx.fillStyle = '#fff4dc';
-    ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = '#ff6a1a';
-    for (let k = 0; k < 3; k++) {
-      const x0 = 3 + k * 10;
-      ctx.beginPath();
-      if (pointRight) {
-        ctx.moveTo(x0, 2); ctx.lineTo(x0 + 4, 2); ctx.lineTo(x0 + 9, 8); ctx.lineTo(x0 + 4, 14); ctx.lineTo(x0, 14); ctx.lineTo(x0 + 5, 8);
-      } else {
-        ctx.moveTo(x0 + 9, 2); ctx.lineTo(x0 + 5, 2); ctx.lineTo(x0, 8); ctx.lineTo(x0 + 5, 14); ctx.lineTo(x0 + 9, 14); ctx.lineTo(x0 + 4, 8);
-      }
-      ctx.closePath();
-      ctx.fill();
-    }
-  }, { nearest: true });
-}
-
-// Placas de seta nas curvas fechadas, do lado de fora da curva.
-function cornerSigns(track) {
-  const g = new THREE.Group();
-  const right = new THREE.MeshLambertMaterial({ map: chevronTexture(true), side: THREE.DoubleSide });
-  const left = new THREE.MeshLambertMaterial({ map: chevronTexture(false), side: THREE.DoubleSide });
-  let last = -Infinity;
-  for (let s = 0; s < track.length; s += 4) {
-    const p = pointAt(track, s, 0);
-    if (Math.abs(p.turn) < 0.55 || s - last < 26) continue;
-    last = s;
-    const ahead = pointAt(track, s + 14, 0);
-    const outsideSign = -Math.sign(ahead.turn);
-    const spot = pointAt(track, s + 14, outsideSign * (track.halfWidth + 1.2));
-    // direita do piloto = (-tz, tx)
-    const nDotRight = ahead.nx * -ahead.tz + ahead.nz * ahead.tx;
-    const turnsRight = Math.sign(ahead.turn) * nDotRight > 0;
-    const board = new THREE.Mesh(new THREE.PlaneGeometry(6, 3), turnsRight ? right : left);
-    board.position.set(spot.x, 3.2, spot.z);
-    board.rotation.y = Math.atan2(-ahead.tx, -ahead.tz);
-    g.add(board);
-    g.add(part(new THREE.BoxGeometry(0.4, 3, 0.4), PAL.plum, [spot.x, 0.5, spot.z]));
-  }
+  const inner = pointAt(track, 0, -(track.halfWidth + 1.2));
+  g.add(part(new THREE.CylinderGeometry(0.22, 0.22, 7, 6), PAL.cream, [inner.x, 4.5, inner.z]));
+  const flag = part(new THREE.BoxGeometry(0.15, 1.8, 2.8), PAL.magma, [inner.x, 7, inner.z - 1.4]);
+  g.add(flag);
+  g.add(part(new THREE.OctahedronGeometry(0.7, 0), PAL.magmaHot, [inner.x, 8.3, inner.z]));
   return g;
 }

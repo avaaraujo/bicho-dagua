@@ -1,11 +1,13 @@
 // Teclado, botões de toque e controle de videogame, tudo virando { steer, throttle }.
 export function createInput() {
   const keys = new Set();
-  const touch = { left: false, right: false, gas: false };
-  const LEFT = ['ArrowLeft', 'KeyA'];
-  const RIGHT = ['ArrowRight', 'KeyD'];
-  const GAS = ['ArrowUp', 'KeyW', 'Space'];
-  const GAME_KEYS = new Set([...LEFT, ...RIGHT, ...GAS, 'ArrowDown']);
+  const touch = { left: false, right: false, gas: false, brake: false };
+  // A/D viram, J acelera, K freia e dá ré. Setas também funcionam.
+  const LEFT = ['KeyA', 'ArrowLeft'];
+  const RIGHT = ['KeyD', 'ArrowRight'];
+  const GAS = ['KeyJ', 'ArrowUp'];
+  const BRAKE = ['KeyK', 'ArrowDown'];
+  const GAME_KEYS = new Set([...LEFT, ...RIGHT, ...GAS, ...BRAKE]);
 
   window.addEventListener('keydown', (e) => {
     if (e.target instanceof HTMLInputElement) return;
@@ -36,10 +38,11 @@ export function createInput() {
   const any = (list) => list.some((k) => keys.has(k));
 
   return {
-    bindTouch(leftEl, rightEl, gasEl) {
+    bindTouch(leftEl, rightEl, gasEl, brakeEl) {
       bindButton(leftEl, 'left');
       bindButton(rightEl, 'right');
       bindButton(gasEl, 'gas');
+      bindButton(brakeEl, 'brake');
     },
     read() {
       let steer = 0;
@@ -47,6 +50,7 @@ export function createInput() {
       if (any(LEFT) || touch.left) steer -= 1;
       if (any(RIGHT) || touch.right) steer += 1;
       if (any(GAS) || touch.gas) throttle = 1;
+      if (any(BRAKE) || touch.brake) throttle = throttle > 0 ? 0 : -1;
       const pad = navigator.getGamepads?.().find((p) => p && p.connected);
       if (pad) {
         const ax = pad.axes[0] ?? 0;
@@ -54,6 +58,7 @@ export function createInput() {
         if (pad.buttons[14]?.pressed) steer = -1;
         if (pad.buttons[15]?.pressed) steer = 1;
         if (pad.buttons[0]?.pressed || pad.buttons[7]?.value > 0.2) throttle = Math.max(throttle, pad.buttons[7]?.value || 1);
+        if (pad.buttons[1]?.pressed || pad.buttons[6]?.value > 0.2) throttle = -1;
       }
       return { steer, throttle };
     },

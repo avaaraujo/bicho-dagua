@@ -8,16 +8,16 @@ import { PHYSICS_DT, LAPS, RACE_TIME_LIMIT } from '../shared/constants.js';
 const track = buildTrack();
 
 test('pista fechada e sem auto-interseção perto demais', () => {
-  assert.ok(track.length > 350 && track.length < 700, `comprimento ${track.length}`);
+  assert.ok(track.length > 120 && track.length < 300, `comprimento ${track.length}`);
   // amostras que não são vizinhas na pista não podem ficar a menos de uma largura
   const S = track.samples;
   for (let i = 0; i < S.length; i += 4) {
     for (let j = 0; j < S.length; j += 4) {
       const along = Math.abs(S[i].s - S[j].s);
       const gap = Math.min(along, track.length - along);
-      if (gap < 60) continue;
+      if (gap < 40) continue;
       const d = Math.hypot(S[i].x - S[j].x, S[i].z - S[j].z);
-      assert.ok(d > track.halfWidth * 2 + 6, `trechos ${i} e ${j} a ${d.toFixed(1)} m`);
+      assert.ok(d > track.halfWidth * 2 + 2, `trechos ${i} e ${j} a ${d.toFixed(1)} m`);
     }
   }
 });
@@ -49,6 +49,6 @@ test('4 bots terminam 5 voltas dentro do tempo', () => {
   }
   console.log('tempos de chegada (s):', finish.map((f) => f && f.toFixed(1)).join(', '), '| volta:', (track.length).toFixed(0), 'm');
   assert.ok(finish.every((f) => f !== null), `nem todos terminaram: ${boats.map((b) => lapOf(b, track)).join(',')}`);
-  assert.ok(Math.max(...finish) < 150);
+  assert.ok(Math.max(...finish) < 90, `lento demais: ${Math.max(...finish)}`);
   assert.equal(LAPS, 5);
 });

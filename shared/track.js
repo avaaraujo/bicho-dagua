@@ -1,37 +1,24 @@
-// Pista: uma linha central fechada (Catmull-Rom) com largura fixa.
-// Tudo é medido no plano x/z; y é altura.
+// Pista: uma linha central fechada com largura fixa, no plano x/z (y = altura).
+// Formato de estádio, como uma piscina: duas retas e duas curvas de 180°
+// bem fechadas em volta de uma mureta central. As curvas decidem a corrida.
 
-export const TRACK_HALF_WIDTH = 9;
+export const TRACK_HALF_WIDTH = 6.5;
+export const STRAIGHT = 46; // comprimento de cada reta
+export const TURN_RADIUS = 10; // raio da curva na linha central
 
-// Pontos de controle do anel dentro da cratera. A reentrância entre
-// (52, 30) e (-6, 52) cria um "S" que pune quem entra rápido demais.
-const CONTROL_POINTS = [
-  [0, -62], [38, -58], [68, -36], [78, 0], [70, 30], [44, 34],
-  [22, 28], [6, 48], [-22, 70], [-58, 60], [-80, 24], [-72, -22], [-40, -54],
-];
-
-const SAMPLES_PER_SEGMENT = 32;
-
-function catmullRom(p0, p1, p2, p3, t) {
-  const t2 = t * t;
-  const t3 = t2 * t;
-  return [
-    0.5 * (2 * p1[0] + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3),
-    0.5 * (2 * p1[1] + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3),
-  ];
+// Largada no meio da reta de baixo (perto da câmera), indo para +x.
+function stadiumPoints(L = STRAIGHT, R = TURN_RADIUS, step = 0.5) {
+  const pts = [];
+  const h = L / 2;
+  for (let x = 0; x < h; x += step) pts.push([x, R]);
+  for (let a = 0; a < Math.PI; a += step / R) pts.push([h + R * Math.sin(a), R * Math.cos(a)]);
+  for (let x = h; x > -h; x -= step) pts.push([x, -R]);
+  for (let a = 0; a < Math.PI; a += step / R) pts.push([-h - R * Math.sin(a), -R * Math.cos(a)]);
+  for (let x = -h; x < 0; x += step) pts.push([x, R]);
+  return pts;
 }
 
-export function buildTrack(points = CONTROL_POINTS, halfWidth = TRACK_HALF_WIDTH) {
-  const n = points.length;
-  const raw = [];
-  for (let i = 0; i < n; i++) {
-    const p0 = points[(i - 1 + n) % n];
-    const p1 = points[i];
-    const p2 = points[(i + 1) % n];
-    const p3 = points[(i + 2) % n];
-    for (let k = 0; k < SAMPLES_PER_SEGMENT; k++) raw.push(catmullRom(p0, p1, p2, p3, k / SAMPLES_PER_SEGMENT));
-  }
-
+export function buildTrack(raw = stadiumPoints(), halfWidth = TRACK_HALF_WIDTH) {
   // Área com sinal: decide para que lado fica o "fora" da pista.
   let area = 0;
   for (let i = 0; i < raw.length; i++) {

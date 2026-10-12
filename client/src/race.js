@@ -7,6 +7,7 @@ import {
 import { createBrain, botInput } from '../../shared/bot.js';
 import { PHYSICS_DT, TICK_RATE } from '../../shared/constants.js';
 import { buildRacerModel } from './scene/models.js';
+import { STRAIGHT, TURN_RADIUS } from '../../shared/track.js';
 
 const INTERP_DELAY = 120; // ms atrás do servidor, para suavizar os outros
 
@@ -43,6 +44,33 @@ function nameTag(text, color) {
   return sprite;
 }
 
+// Câmera fixa no alto mostrando a piscina inteira, como no minigame original.
+// No celular em pé ela gira 90° para a pista comprida caber na tela.
+export function overviewCamera(camera, track, sway = 0) {
+  const portrait = camera.aspect < 1;
+  const fov = portrait ? 50 : 38;
+  if (camera.fov !== fov) {
+    camera.fov = fov;
+    camera.updateProjectionMatrix();
+  }
+  const wall = track.halfWidth + 2.6;
+  const halfLong = STRAIGHT / 2 + TURN_RADIUS + wall + 1.5;
+  const halfShort = TURN_RADIUS + wall + 1.5;
+  const pitch = (portrait ? 56 : 42) * (Math.PI / 180);
+  const tanV = Math.tan((fov * Math.PI) / 360);
+  const tanH = tanV * camera.aspect;
+  const halfW = portrait ? halfShort : halfLong;
+  const halfD = portrait ? halfLong : halfShort;
+  const dist = Math.max(halfW / tanH, (halfD * Math.sin(pitch)) / tanV) * (portrait ? 1.18 : 1.3);
+  const up = Math.sin(pitch) * dist;
+  const back = Math.cos(pitch) * dist;
+  // mira um pouco atrás da pista: ela desce na tela e a baleia aparece no fundo
+  const target = portrait ? [-3, 0, 0] : [0, 0, -7];
+  if (portrait) camera.position.set(target[0] + back, up, target[2] + sway);
+  else camera.position.set(target[0] + sway, up, target[2] + back);
+  camera.lookAt(...target);
+}
+
 // Atualiza o modelo 3D a partir de um estado de barco.
 export function poseModel(model, b, t, phase = 0) {
   model.position.set(b.x, 0.12 + Math.sin(t * 3.2 + phase) * 0.07, b.z);
@@ -72,11 +100,21 @@ export class Race {
     this.shake = 0;
     this.lastLap = 0;
     this.myPlace = null;
+    this.cameraMode = 'overview'; // câmera de trás só depois de cruzar a chegada
 
     this.start.racers.forEach((r, i) => {
       const model = buildRacerModel(r.character);
       const isMe = r.id === this.myId;
-      if (!isMe) model.add(nameTag(r.name, model.userData.color ?? '#fff4dc'));
+      model.scale.setScalar(1.25);
+      model.add(nameTag(isMe ? 'Você' : r.name, model.userData.color ?? '#fff4dc'));
+      if (isMe) {
+        this.marker = new THREE.Mesh(
+          new THREE.ConeGeometry(0.7, 1.4, 4),
+          new THREE.MeshBasicMaterial({ color: 0xffc23a, fog: false }),
+        );
+        this.marker.rotation.x = Math.PI;
+        model.add(this.marker);
+      }
       this.group.add(model);
       const display = createBoat(r);
       this.entries.set(r.id, { info: r, model, display, buffer: [], phase: i * 1.7, isMe, place: i + 1 });
@@ -104,11 +142,13 @@ export class Race {
         this.myPlace = r.place;
         // O servidor recusou minha posição (salto grande): volta para a dele.
         const b = this.myBoat;
+        e.finished = r.finished;
         if (this.racing && Math.hypot(b.x - r.x, b.z - r.z) > 18) {
           Object.assign(b, { x: r.x, z: r.z, h: r.h, vx: r.vx, vz: r.vz, total: r.total, s: null });
         }
         continue;
       }
+      e.display.total = r.total;
       e.buffer.push({ t: snap.t, x: r.x, z: r.z, h: r.h, vx: r.vx, vz: r.vz, lean: r.lean, total: r.total });
       if (e.buffer.length > 40) e.buffer.shift();
     }
@@ -204,9 +244,24 @@ export class Race {
     if (b) {
       this.placeCamera(false, dt);
       this.hud.place(this.myPlace);
-      this.hud.radar(b, [...this.entries.values()].map((e) => ({
-        x: e.display.x, z: e.display.z, character: e.info.character, isMe: e.isMe,
-      })));
+      if (this.marker) {
+        this.marker.visible = this.cameraMode === 'overview' && !this.finishedLocal;
+        this.marker.position.y = 5.2 + Math.sin(t * 5) * 0.3;
+      }
+    } else {
+      overviewCamera(this.camera, this.track);
+    }
+    this.boardAcc = (this.boardAcc ?? 0) + dt;
+    if (this.boardAcc > 0.25) {
+      this.boardAcc = 0;
+      this.hud.board([...this.entries.values()].map((e) => ({
+        name: e.isMe ? 'Você' : e.info.name,
+        character: e.info.character,
+        place: e.place,
+        lap: Math.max(1, Math.min(this.laps, Math.floor((e.display.total ?? 0) / this.track.length) + 1)),
+        finished: !!e.finished,
+        isMe: e.isMe,
+      })), this.laps);
     }
     this.hud.time(this.timeLeft);
     this.hud.update(dt);
@@ -218,7 +273,8 @@ export class Race {
       this.lastLap = lapIdx;
       if (hasFinished(b, this.track)) {
         this.finishedLocal = true;
-        this.hud.banner('CHEGOU!', 0, 'go');
+        this.hud.banner('CHEGOU!', 2.5, 'go');
+        this.setCameraMode('chase');
         this.audio.fanfare(this.myPlace === 1);
         this.onFinishedLocal?.();
       } else if (lapIdx === this.laps - 1) {
@@ -242,7 +298,21 @@ export class Race {
     }
   }
 
+  setCameraMode(mode) {
+    this.cameraMode = mode;
+    if (this.myBoat) this.placeCamera(true);
+  }
+
   placeCamera(snap, dt = 0) {
+    this.shake = Math.max(0, this.shake - dt * 2);
+    if (this.cameraMode === 'overview') {
+      overviewCamera(this.camera, this.track, (Math.random() - 0.5) * this.shake);
+      return;
+    }
+    if (this.camera.fov !== (this.camera.aspect < 1 ? 82 : 65)) {
+      this.camera.fov = this.camera.aspect < 1 ? 82 : 65;
+      this.camera.updateProjectionMatrix();
+    }
     const b = this.myBoat;
     const fx = Math.sin(b.h);
     const fz = Math.cos(b.h);
@@ -252,7 +322,6 @@ export class Race {
     const target = new THREE.Vector3(b.x - fx * back, up, b.z - fz * back);
     if (snap) this.camera.position.copy(target);
     else this.camera.position.lerp(target, 1 - Math.exp(-dt * 5));
-    this.shake = Math.max(0, this.shake - dt * 2);
     const sx = (Math.random() - 0.5) * this.shake;
     const sy = (Math.random() - 0.5) * this.shake;
     this.camera.lookAt(b.x + fx * 8 + sx, 1.3 + sy, b.z + fz * 8);
@@ -278,6 +347,7 @@ export class Showcase {
     scene.add(this.group);
     this.racers = ['morsa', 'garca', 'sapo', 'cabra'].map((ch, i) => {
       const model = buildRacerModel(ch);
+      model.scale.setScalar(1.25);
       this.group.add(model);
       const boat = createBoat({ x: 0, z: 0, h: 0, total: 0 });
       const p = this.track.samples[(i * 37) % this.track.samples.length];
@@ -302,16 +372,7 @@ export class Showcase {
       const sp = Math.abs(forwardSpeed(r.boat));
       if (sp > 4) this.spray.trail(r.boat, sp, dt);
     }
-    // câmera: segue de longe o primeiro bot, girando devagar ao redor
-    const lead = this.racers[0].boat;
-    const a = t * 0.12;
-    const target = new THREE.Vector3(
-      lead.x * 0.5 + this.center.x * 0.5 + Math.cos(a) * 55,
-      26,
-      lead.z * 0.5 + this.center.z * 0.5 + Math.sin(a) * 55,
-    );
-    this.camera.position.lerp(target, 1 - Math.exp(-dt * 1.5));
-    this.camera.lookAt(lead.x, 2, lead.z);
+    overviewCamera(this.camera, this.track, Math.sin(t * 0.2) * 6);
   }
 
   dispose() {

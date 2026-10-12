@@ -15,7 +15,7 @@ import { createAudio } from './audio.js';
 import { Race, Showcase } from './race.js';
 
 const $ = (id) => document.getElementById(id);
-const INTERNAL_HEIGHT = 480; // resolução interna baixa, ampliada com pixels nítidos
+const INTERNAL_HEIGHT = 560; // resolução interna baixa, ampliada com pixels nítidos
 const AUTOPILOT = new URLSearchParams(location.search).has('autopilot'); // só para testes automáticos
 
 // ---------- cena ----------
@@ -38,7 +38,6 @@ function resize() {
   const scale = Math.min(1, INTERNAL_HEIGHT / h);
   renderer.setSize(Math.round(w * scale), Math.round(h * scale), false);
   camera.aspect = w / h;
-  camera.fov = w / h < 1 ? 82 : 65;
   camera.updateProjectionMatrix();
 }
 window.addEventListener('resize', resize);
@@ -46,7 +45,7 @@ resize();
 
 const isTouch = window.matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
 document.body.classList.toggle('is-touch', isTouch);
-input.bindTouch($('t-left'), $('t-right'), $('t-gas'));
+input.bindTouch($('t-left'), $('t-right'), $('t-gas'), $('t-brake'));
 
 // ---------- estado do app ----------
 const app = {

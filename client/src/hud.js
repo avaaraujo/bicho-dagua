@@ -1,4 +1,4 @@
-// HUD da corrida: volta, colocação, tempo, radar e avisos no centro.
+// HUD da corrida: volta, colocação, tempo, placar e avisos no centro.
 import { characterInfo } from './scene/models.js';
 
 const $ = (id) => document.getElementById(id);
@@ -11,9 +11,8 @@ export function createHud(track) {
     place: $('hud-place'),
     time: $('hud-time'),
     banner: $('hud-banner'),
-    radar: $('hud-radar'),
+    board: $('hud-board'),
   };
-  const ctx = el.radar.getContext('2d');
   let bannerTimer = 0;
   let bannerSticky = false;
   let last = { lap: '', place: '', time: '' };
@@ -28,8 +27,32 @@ export function createHud(track) {
     show(on) {
       el.root.hidden = !on;
     },
+    // lista com a volta de cada um, como os quatro placares do original
+    board(rows, laps) {
+      const key = JSON.stringify(rows);
+      if (key === last.board) return;
+      last.board = key;
+      el.board.replaceChildren(...[...rows].sort((a, b) => a.place - b.place).map((r) => {
+        const li = document.createElement('li');
+        if (r.isMe) li.className = 'is-me';
+        const pos = document.createElement('span');
+        pos.className = 'board-pos';
+        pos.textContent = `${r.place}º`;
+        const chip = document.createElement('span');
+        chip.className = 'board-chip';
+        chip.style.background = characterInfo(r.character).color;
+        const name = document.createElement('span');
+        name.className = 'board-name';
+        name.textContent = r.name;
+        const lap = document.createElement('span');
+        lap.className = 'board-lap';
+        lap.textContent = r.finished ? 'Chegou' : `${r.lap}/${laps}`;
+        li.append(pos, chip, name, lap);
+        return li;
+      }));
+    },
     reset() {
-      last = { lap: '', place: '', time: '' };
+      last = { lap: '', place: '', time: '', board: '' };
       this.banner('', 0);
     },
     lap(n, total) {
@@ -61,81 +84,6 @@ export function createHud(track) {
         bannerTimer -= dt;
         if (bannerTimer <= 0) el.banner.classList.remove('is-on');
       }
-    },
-    // radar girando com o piloto: a frente fica para cima
-    radar(me, racers) {
-      const w = el.radar.width;
-      const r = w / 2;
-      const scale = r / 85; // metros visíveis no raio
-      ctx.clearRect(0, 0, w, w);
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(r, r, r - 2, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(16, 52, 58, 0.82)';
-      ctx.fill();
-      ctx.clip();
-      ctx.strokeStyle = 'rgba(126, 232, 216, 0.28)';
-      ctx.lineWidth = 2;
-      for (const k of [0.33, 0.66]) {
-        ctx.beginPath();
-        ctx.arc(r, r, r * k, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      ctx.beginPath();
-      ctx.moveTo(r, 0); ctx.lineTo(r, w);
-      ctx.moveTo(0, r); ctx.lineTo(w, r);
-      ctx.stroke();
-
-      // mundo → radar: centraliza em mim e gira pela minha direção
-      const cos = Math.cos(me.h);
-      const sin = Math.sin(me.h);
-      const toRadar = (x, z) => {
-        const dx = x - me.x;
-        const dz = z - me.z;
-        const fwd = dx * sin + dz * cos;
-        const right = dx * -cos + dz * sin;
-        return [r + right * scale, r - fwd * scale];
-      };
-      ctx.strokeStyle = 'rgba(255, 244, 220, 0.55)';
-      ctx.lineWidth = track.halfWidth * 2 * scale;
-      ctx.lineJoin = 'round';
-      ctx.beginPath();
-      track.samples.forEach((s, i) => {
-        const [x, y] = toRadar(s.x, s.z);
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      });
-      ctx.closePath();
-      ctx.stroke();
-
-      for (const o of racers) {
-        if (o.isMe) continue;
-        const [x, y] = toRadar(o.x, o.z);
-        ctx.fillStyle = characterInfo(o.character).color;
-        ctx.strokeStyle = '#24142a';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(x, y, 6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-      }
-      ctx.restore();
-      // eu: triângulo no centro
-      ctx.fillStyle = '#fff4dc';
-      ctx.strokeStyle = '#24142a';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(r, r - 9);
-      ctx.lineTo(r + 7, r + 7);
-      ctx.lineTo(r - 7, r + 7);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(r, r, r - 2, 0, Math.PI * 2);
-      ctx.strokeStyle = '#3b2440';
-      ctx.lineWidth = 4;
-      ctx.stroke();
     },
   };
 }
