@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#24142a" />
+  <meta name="description" content="Bicho d’Água: corrida de jet-ski de bichos para até 4 amigos, direto no navegador." />
+  <title>Bicho d’Água</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2324142a'/%3E%3Cpath d='M5 21h22l-4 5H8z' fill='%2319c3b4'/%3E%3Cpath d='M9 20l4-10h6l4 10z' fill='%23ff6a1a'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <canvas id="game" aria-hidden="true"></canvas>
+  <div class="crt" aria-hidden="true"></div>
+
+  <!-- Início -->
+  <main id="screen-home" class="screen">
+    <h1 class="logo"><span class="chrome">Bicho</span><span class="chrome logo-big">d’Água</span></h1>
+    <p class="tagline">Corrida de jet-ski entre bichos, numa piscina dentro do vulcão. 5 voltas, até 4 amigos, direto no navegador.</p>
+    <form class="panel" id="form-home" autocomplete="off">
+      <label class="field">
+        <span class="field-label">Seu nome</span>
+        <input id="in-name" name="name" maxlength="14" required placeholder="Como te chamam?" />
+      </label>
+      <button class="btn btn-primary" type="submit" id="btn-create">Criar sala</button>
+      <div class="join-row">
+        <label class="field">
+          <span class="field-label">Código da sala</span>
+          <input id="in-code" name="code" maxlength="4" inputmode="text" autocapitalize="characters" placeholder="ABCD" />
+        </label>
+        <button class="btn btn-secondary" type="button" id="btn-join">Entrar</button>
+      </div>
+      <p class="form-error" id="home-error" role="alert"></p>
+    </form>
+    <p class="controls-hint"><kbd>A</kbd> <kbd>D</kbd> viram · <kbd>J</kbd> acelera · <kbd>K</kbd> freia e dá ré. Setas e controle de videogame também funcionam.</p>
+  </main>
+
+  <!-- Sala -->
+  <main id="screen-lobby" class="screen" hidden>
+    <div class="panel lobby">
+      <div class="lobby-col">
+      <div class="lobby-head">
+        <div>
+          <p class="field-label">Código da sala</p>
+          <p class="room-code chrome" id="lobby-code">----</p>
+        </div>
+        <button class="btn btn-secondary btn-small" type="button" id="btn-copy">Copiar convite</button>
+      </div>
+      <ol class="slots" id="lobby-slots"></ol>
+      </div>
+      <div class="lobby-col">
+      <fieldset class="picker">
+        <legend class="field-label">Escolha seu piloto</legend>
+        <div class="picker-grid" id="lobby-picker"></div>
+      </fieldset>
+      <button class="btn btn-primary" type="button" id="btn-start">Largar!</button>
+      <p class="lobby-wait" id="lobby-wait"></p>
+      <button class="btn btn-ghost" type="button" id="btn-leave">Sair da sala</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Resultado -->
+  <main id="screen-results" class="screen" hidden>
+    <div class="panel results">
+      <h2 class="results-title chrome" id="results-title">Resultado</h2>
+      <p class="results-sub" id="results-sub"></p>
+      <ol class="podium" id="results-list"></ol>
+      <button class="btn btn-primary" type="button" id="btn-again">Correr de novo</button>
+      <p class="lobby-wait" id="results-wait"></p>
+      <button class="btn btn-ghost" type="button" id="btn-results-leave">Sair da sala</button>
+    </div>
+  </main>
+
+  <!-- HUD -->
+  <div id="hud" hidden>
+    <div class="hud-lap"><span class="hud-label" id="hud-lap-label">Volta</span><span class="chrome" id="hud-lap">1/5</span></div>
+    <div class="hud-time" id="hud-time">3:00</div>
+    <ol class="hud-board" id="hud-board" aria-label="Colocação"></ol>
+    <div class="hud-place chrome" id="hud-place"></div>
+    <div class="hud-banner chrome" id="hud-banner" aria-live="polite"></div>
+  </div>
+
+  <div id="touch" hidden>
+    <button class="touch-btn" id="t-left" type="button" aria-label="Virar à esquerda">
+      <svg viewBox="0 0 24 24"><path d="M15 4 7 12l8 8" /></svg>
+    </button>
+    <button class="touch-btn" id="t-right" type="button" aria-label="Virar à direita">
+      <svg viewBox="0 0 24 24"><path d="m9 4 8 8-8 8" /></svg>
+    </button>
+    <button class="touch-btn touch-brake" id="t-brake" type="button" aria-label="Frear e dar ré">
+      <svg viewBox="0 0 24 24"><path d="M5 9l7 7 7-7" /></svg>
+      <span>Ré</span>
+    </button>
+    <button class="touch-btn touch-gas" id="t-gas" type="button" aria-label="Acelerar">
+      <svg viewBox="0 0 24 24"><path d="M5 15 12 8l7 7" /><path d="M5 20l7-7 7 7" /></svg>
+      <span>Acelerar</span>
+    </button>
+  </div>
+
+  <button class="mute" id="btn-mute" type="button" aria-label="Desligar som" aria-pressed="false">
+    <svg viewBox="0 0 24 24" class="icon-on"><path d="M4 9h4l5-4v14l-5-4H4z" /><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11" /></svg>
+    <svg viewBox="0 0 24 24" class="icon-off"><path d="M4 9h4l5-4v14l-5-4H4z" /><path d="m16 10 5 5m0-5-5 5" /></svg>
+  </button>
+
+  <div class="toast" id="toast" role="status"></div>
+  <div class="rotate" id="overlay-rotate" role="dialog" aria-labelledby="rotate-title">
+    <svg class="rotate-phone" viewBox="0 0 64 64" aria-hidden="true">
+      <rect x="20" y="6" width="24" height="44" rx="5" />
+      <path d="M29 44h6" />
+      <path class="rotate-arrow" d="M50 30a20 20 0 0 1-12 22m0 0 6 1m-6-1 2-6" />
+    </svg>
+    <p class="rotate-title chrome" id="rotate-title">Deite o celular</p>
+    <p class="overlay-text">Bicho d’Água fica bem melhor com o celular de lado: a pista inteira aparece e os botões não ficam em cima dela.</p>
+    <button class="btn btn-ghost" type="button" id="btn-rotate-skip">Jogar em pé mesmo</button>
+  </div>
+
+  <div class="overlay" id="overlay-connect" hidden>
+    <p class="chrome overlay-title">Ligando os motores…</p>
+    <p class="overlay-text">Acordando o servidor. Na primeira visita do dia isso pode levar até 1 minuto.</p>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

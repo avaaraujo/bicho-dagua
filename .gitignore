@@ -1,0 +1,6 @@
+# Impeccable engine binary (downloaded on first run)
+.claude/skills/impeccable/scripts/bin/
+# Impeccable per-session state
+.impeccable/questions/
+node_modules/
+dist/
