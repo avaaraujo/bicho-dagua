@@ -9,7 +9,7 @@ All characters, art, sounds and names are original.
 1. One player clicks **Criar sala** and gets a 4-letter code.
 2. The others enter the code, or open the link from **Copiar convite**.
 3. Each player picks a racer: Morsa, Garça, Sapo or Cabra.
-4. The host clicks **Largar!**.
+4. The host picks the mode, **Quick Play** (one race) or **Grand Prix** (4 races on tracks you draw), and starts.
 
 | | Steer | Accelerate | Brake / reverse |
 |---|---|---|---|
@@ -20,6 +20,12 @@ All characters, art, sounds and names are original.
 The track is a pool seen from above, with a wall down the middle: a starting straight, two tight 180° turns at the ends, and a chicane on the top straight. A race lasts about 1 minute.
 
 The jet-ski takes about 5 seconds to reach top speed, and **any collision stops it**: the wall or another jet-ski. You have to brake (**K**) before the turns. As in the original minigame, the camera has a fixed overhead angle and frames the racers who are still in the race. When they are close together it zooms in on them, and it only opens up to the whole track when they are spread out. Steering is relative to the jet-ski, so when it is heading toward the screen, left and right feel reversed. If you turn around, **CONTRAMÃO!** appears on screen. After you cross the finish line, the camera moves behind your jet-ski, which keeps lapping on its own while the others finish.
+
+### Grand Prix
+
+Four races, each on a track drawn by one of the players. Before each race the game picks a human player (everyone draws once before anyone repeats). That player has 15 seconds to draw a closed loop on a sheet of paper: the loop closes when the pencil is lifted inside the orange start circle, and that point becomes the start. If the drawing does not become a track, the player gets 10 more seconds; if it fails again, the race uses the Quick Play pool. The others wait without seeing the drawing. A figure-8 becomes a bridge over a tunnel (up to 3 crossings). Each race gives 10, 6, 3 and 1 points; bots score too. Ties are broken by wins, then by the last race. The champion lifts the trophy on the podium at the end.
+
+The drawing becomes a track through geometry only (`shared/sketch.js`), with no paid API. The full plan and rules are in [docs/grand-prix.md](docs/grand-prix.md).
 
 ## Running locally
 
@@ -56,3 +62,5 @@ Each browser simulates its own jet-ski and sends its position 20 times per secon
 ## Test mode
 
 Adding `?autopilot=1` to the address makes your jet-ski drive itself. It is used by automated tests.
+
+With the server started with `BICHO_DEV=1`, two shortcuts help test drawn tracks by hand: `node scripts/dev-sketch.js CODE figureEight 3` sends a test drawing for the next start in room `CODE`, and the `dev:finish` socket event ends the current race at once. `node scripts/sketch-gallery.js` renders how the test drawings become tracks (`dist/sketch-gallery.html`).

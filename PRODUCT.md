@@ -25,7 +25,8 @@ An original party racing minigame. It is not a clone: it carries no characters, 
 ## Operating Context
 
 - One player creates a room and shares a short code. The others join from their own devices. Bots fill the empty slots up to 4 racers.
-- The race is on water, around a single track. The first to complete 5 laps wins. If nobody finishes within 3 minutes, the race ends in a draw.
+- The race is on water. The first to complete 5 laps wins. If nobody finishes within 3 minutes, the race ends in a draw.
+- Two modes. **Quick Play**: one race on the crater pool. **Grand Prix**: 4 races; before each one a randomly chosen human player draws the track in 15 seconds, and points (10, 6, 3, 1) decide the winner. Track generation is pure geometry in code, with no paid API.
 - Cornering is the skill. Too fast pushes you into the outer wall and slows you down. Too slow or careless turns you around, and the game warns that you are going the wrong way.
 - The free Render server sleeps after 15 idle minutes. The first visitor after that waits about a minute while it wakes up.
 

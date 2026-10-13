@@ -48,6 +48,19 @@
       <ol class="slots" id="lobby-slots"></ol>
       </div>
       <div class="lobby-col">
+      <fieldset class="modes">
+        <legend class="field-label">Modo de jogo</legend>
+        <div class="mode-grid" id="lobby-modes">
+          <button class="mode" type="button" data-mode="quick" aria-pressed="true">
+            <span class="mode-name">Quick Play</span>
+            <span class="mode-desc">Uma corrida de 5 voltas na piscina do vulcão.</span>
+          </button>
+          <button class="mode" type="button" data-mode="gp" aria-pressed="false">
+            <span class="mode-name">Grand Prix</span>
+            <span class="mode-desc">4 corridas em pistas desenhadas por vocês. Pontos: 10, 6, 3 e 1.</span>
+          </button>
+        </div>
+      </fieldset>
       <fieldset class="picker">
         <legend class="field-label">Escolha seu piloto</legend>
         <div class="picker-grid" id="lobby-picker"></div>
@@ -71,9 +84,59 @@
     </div>
   </main>
 
+  <!-- Grand Prix: sorteio, folha de desenho e espera -->
+  <main id="screen-draw" class="screen draw-screen" hidden>
+    <div class="panel draw-intro" id="draw-intro" hidden>
+      <h2 class="chrome draw-title" id="draw-intro-title">Quem desenha a pista 1?</h2>
+      <ol class="roulette" id="draw-roulette" aria-live="polite"></ol>
+      <p class="draw-note">Quem for sorteado tem 15 segundos. A pista só aparece para todos na largada.</p>
+    </div>
+    <div class="sheet" id="draw-sheet" hidden>
+      <div class="sheet-bar">
+        <div class="sheet-text">
+          <h2 class="chrome sheet-title" id="sheet-title">Desenhe a pista!</h2>
+          <p class="sheet-hint" id="sheet-hint" aria-live="polite"></p>
+        </div>
+        <button class="btn btn-secondary btn-small" type="button" id="sheet-clear" disabled>Apagar</button>
+        <p class="clock chrome" id="sheet-timer" aria-label="Segundos restantes">15</p>
+      </div>
+      <div class="paper-wrap" id="paper-wrap">
+        <canvas class="paper" id="paper" aria-label="Folha para desenhar a pista"></canvas>
+      </div>
+    </div>
+    <div class="panel draw-wait" id="draw-wait" hidden>
+      <img class="draw-wait-face" id="draw-wait-face" alt="" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" />
+      <svg class="scribble" viewBox="0 0 160 76" aria-hidden="true">
+        <path id="scribble-path" class="scribble-line" pathLength="1" d="M22 40C22 13 64 11 80 38S138 66 138 40S96 13 80 38S22 67 22 40Z" />
+        <g class="scribble-pencil">
+          <animateMotion dur="2.6s" repeatCount="indefinite"><mpath href="#scribble-path" /></animateMotion>
+          <polygon class="pencil-body" points="7,-2 2,-7 22,-27 27,-22" />
+          <polygon class="pencil-cap" points="22,-27 27,-22 31,-26 26,-31" />
+          <polygon class="pencil-tip" points="0,0 7,-2 2,-7" />
+          <polygon class="pencil-lead" points="0,0 2.6,-0.8 0.8,-2.6" />
+        </g>
+      </svg>
+      <h2 class="draw-wait-title" id="draw-wait-title">Desenhando a pista</h2>
+      <p class="clock chrome" id="draw-wait-timer" aria-label="Segundos restantes">15</p>
+      <p class="draw-note" id="draw-wait-note"></p>
+    </div>
+  </main>
+
+  <!-- Fim do Grand Prix: pódio -->
+  <main id="screen-final" class="screen final-screen" hidden>
+    <h2 class="final-title chrome" id="final-title">Campeão!</h2>
+    <div class="panel final-panel">
+      <p class="final-winner" id="final-winner"></p>
+      <ol class="standings" id="final-list"></ol>
+      <button class="btn btn-primary" type="button" id="btn-final-back">Voltar para a sala</button>
+      <p class="lobby-wait" id="final-wait"></p>
+      <button class="btn btn-ghost" type="button" id="btn-final-leave">Sair da sala</button>
+    </div>
+  </main>
+
   <!-- HUD -->
   <div id="hud" hidden>
-    <div class="hud-lap"><span class="hud-label" id="hud-lap-label">Volta</span><span class="chrome" id="hud-lap">1/5</span></div>
+    <div class="hud-lap"><span class="hud-label" id="hud-lap-label">Volta</span><span class="chrome" id="hud-lap">1/5</span><span class="hud-gp" id="hud-gp" hidden></span></div>
     <div class="hud-time" id="hud-time">3:00</div>
     <ol class="hud-board" id="hud-board" aria-label="Colocação"></ol>
     <div class="hud-place chrome" id="hud-place"></div>

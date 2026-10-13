@@ -1,6 +1,6 @@
 // Física arcade do jet-ski. Mesma função no servidor (bots) e no cliente
 // (o seu jet-ski), para os dois se comportarem igual.
-import { projectOnTrack, wrapDelta } from './track.js';
+import { projectOnTrack, wrapDelta, onDifferentLevels } from './track.js';
 import { LAPS } from './constants.js';
 
 export const BOAT_RADIUS = 1.5;
@@ -92,7 +92,7 @@ function crash(b, nx, nz) {
 // Paredes: mureta de fora e mureta do meio.
 // Bater de frente para o barco; raspar de leve só tira um pouco de velocidade.
 export function collideWalls(b, track) {
-  const p = projectOnTrack(track, b.x, b.z);
+  const p = project(b, track);
   b._proj = p;
   const limit = track.halfWidth - BOAT_RADIUS;
   let hit = 0;
@@ -118,8 +118,14 @@ function pushOut(b, nx, nz, over) {
   return vn;
 }
 
+// Onde o barco está na pista, procurando perto de onde ele estava (ver
+// projectOnTrack): o s da última vez ou, sem ele, a distância percorrida.
+function project(b, track) {
+  return projectOnTrack(track, b.x, b.z, b.s ?? b.total);
+}
+
 export function updateProgress(b, track) {
-  const p = b._proj || projectOnTrack(track, b.x, b.z);
+  const p = b._proj || project(b, track);
   if (b.s === null) {
     b.s = p.s;
     return;
@@ -141,7 +147,7 @@ export function hasFinished(b, track) {
 
 // Andando na direção errada da pista?
 export function isWrongWay(b, track) {
-  const p = b._proj || projectOnTrack(track, b.x, b.z);
+  const p = b._proj || project(b, track);
   const fx = Math.sin(b.h);
   const fz = Math.cos(b.h);
   return fx * p.tx + fz * p.tz < -0.35;
@@ -149,8 +155,10 @@ export function isWrongWay(b, track) {
 
 // Dois barcos se encostando. Batida de verdade para os dois. "fixedB" = b não
 // se mexe (é outro jogador, controlado pelo próprio navegador dele; ele vai
-// sentir a batida do lado de lá).
-export function collideBoats(a, b, fixedB = false) {
+// sentir a batida do lado de lá). Com a pista, quem está na ponte não bate em
+// quem está no túnel.
+export function collideBoats(a, b, fixedB = false, track = null) {
+  if (track && onDifferentLevels(track, a.total, b.total)) return false;
   const dx = b.x - a.x;
   const dz = b.z - a.z;
   const d2 = dx * dx + dz * dz;

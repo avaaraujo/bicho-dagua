@@ -17,3 +17,10 @@ export const CHARACTERS = [
 ];
 
 export const BOT_NAMES = ['Bot Coral', 'Bot Maré', 'Bot Lava', 'Bot Brisa'];
+
+// Grand Prix: 4 corridas em pistas desenhadas pelos jogadores.
+export const GP_RACES = 4;
+export const GP_POINTS = [10, 6, 3, 1]; // por colocação em cada corrida
+export const DRAW_SECONDS = 15; // tempo para desenhar a pista
+export const REDRAW_SECONDS = 10; // segunda chance, se o desenho não deu pista
+export const DRAW_INTRO_MS = 2500; // sorteio na tela antes de a folha abrir

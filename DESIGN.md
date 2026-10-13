@@ -52,6 +52,15 @@ Visual direction: **late-90s console played on a CRT TV** (key visual 3, `docs/k
 - **Touch controls:** two round steering buttons on the left; on the right, a large orange **Acelerar** button and a smaller **Ré** button. The icons are SVG.
 - **Focus:** a 3 px cream outline. Text selection uses magma.
 
+## Grand Prix screens
+
+- **Mode picker** (lobby): two cards, **Quick Play** and **Grand Prix**, styled like the racer picker (plum-deep, magma border when selected). Only the host can switch; the others see the choice disabled. The start button reads **Começar o Grand Prix** in that mode.
+- **Draw** (who draws the next track): a roulette of the human players' portraits that slows down and stops on the drawer (2.5 s), then:
+  - **Sheet** (drawer only): a warm white paper in the 3:2 crater proportion, over the running pool. Graphite pencil line drawn twice (a firm pass and a light offset one). A magma circle marks the start (dashed until the line has left it, solid and pulsing once it can close, filled with **Solte!** when the pencil is inside). A teal dot reads **Continue daqui** when the pencil was lifted early. Chrome countdown numerals turn to the warning gradient in the last 5 s. **Apagar** clears the sheet; the clock keeps running.
+  - **Wait** (everyone else): the drawer's portrait, a small paper card with a pencil scribbling an infinity loop, and the same countdown. Nobody sees the drawing before the start.
+- **Standings** between races: the results panel lists the Grand Prix table (position, portrait, name with this race's place, +points in magma-hot, total in Titan One). On a short landscape phone the panel splits into two columns.
+- **Podium** (end of the Grand Prix): 3D blocks (gold, silver, bronze tops, numbered plates) on the Quick Play centre island, top three racers on them, the winner with arms up holding a low-poly gold trophy and hopping, confetti cubes in the palette, and a slow orbiting camera. A chrome **Campeão!** (or **Você venceu!**) title and the final standings panel sit beside it.
+
 ## Motion
 
 - Banners pop with a short spring (an arcade effect). Everything else uses a smooth ease-out.

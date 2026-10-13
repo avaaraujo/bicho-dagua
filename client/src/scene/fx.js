@@ -12,21 +12,22 @@ export function createSpray(scene) {
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   mesh.frustumCulled = false;
   scene.add(mesh);
-  const parts = Array.from({ length: MAX }, () => ({ life: 0, x: 0, y: -50, z: 0, vx: 0, vy: 0, vz: 0, s: 1 }));
+  const parts = Array.from({ length: MAX }, () => ({ life: 0, x: 0, y: -50, z: 0, vx: 0, vy: 0, vz: 0, s: 1, floor: 0 }));
   let next = 0;
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   const v = new THREE.Vector3();
   const sc = new THREE.Vector3();
 
-  function emit(x, y, z, vx, vy, vz, size = 1) {
+  // floor = altura da água ali (sobe nas pontes); o cubinho some ao cair nela
+  function emit(x, y, z, vx, vy, vz, size = 1, floor = 0) {
     const p = parts[next];
     next = (next + 1) % MAX;
-    Object.assign(p, { life: 0.5 + Math.random() * 0.35, x, y, z, vx, vy, vz, s: size });
+    Object.assign(p, { life: 0.5 + Math.random() * 0.35, x, y: y + floor, z, vx, vy, vz, s: size, floor });
   }
 
   return {
-    // rastro atrás de um barco andando
+    // rastro atrás de um barco andando (boat.y = altura da água embaixo dele)
     trail(boat, speed, dt) {
       const n = Math.min(4, speed * dt * 4);
       const fx = Math.sin(boat.h);
@@ -41,14 +42,15 @@ export function createSpray(scene) {
           2.5 + Math.random() * speed * 0.18,
           -fz * speed * 0.15 + fx * side * (1.5 + Math.random() * 2),
           0.45 + Math.random() * 0.45,
+          boat.y ?? 0,
         );
       }
     },
-    splash(x, z, strength) {
+    splash(x, z, strength, floor = 0) {
       for (let i = 0; i < 14 * strength + 4; i++) {
         const a = Math.random() * Math.PI * 2;
         const sp = 3 + Math.random() * 6 * strength;
-        emit(x, 0.5, z, Math.cos(a) * sp, 4 + Math.random() * 7 * strength, Math.sin(a) * sp, 1.2);
+        emit(x, 0.5, z, Math.cos(a) * sp, 4 + Math.random() * 7 * strength, Math.sin(a) * sp, 1.2, floor);
       }
     },
     update(dt) {
@@ -60,7 +62,7 @@ export function createSpray(scene) {
           p.x += p.vx * dt;
           p.y += p.vy * dt;
           p.z += p.vz * dt;
-          if (p.y < 0) p.life = 0;
+          if (p.y < p.floor) p.life = 0;
         }
         const s = p.life > 0 ? p.s * Math.min(1, p.life * 3) : 0;
         m.compose(v.set(p.x, p.y, p.z), q, sc.set(s, s, s));

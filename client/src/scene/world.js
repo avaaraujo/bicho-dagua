@@ -2,7 +2,7 @@
 // ao fundo, paredões com cachoeiras e lava, céu de fim de tarde.
 import * as THREE from 'three';
 import { part, flat, canvasTexture, hash, mixColor, vertexColorMaterial } from './lowpoly.js';
-import { pointAt } from '../../../shared/track.js';
+import { pointAt, waterHeightAt } from '../../../shared/track.js';
 
 const PAL = {
   waterDeep: '#0b7f86',
@@ -46,9 +46,6 @@ export function buildWorld(scene, track) {
   scene.add(water.mesh);
   animated.push(water.update);
 
-  scene.add(poolWalls(track));
-  scene.add(finishLine(track));
-
   // Cenário em volta da piscina, na mesma escala da pista.
   const scenery = new THREE.Group();
   scenery.scale.setScalar(SCENERY_SCALE);
@@ -59,7 +56,8 @@ export function buildWorld(scene, track) {
   whale.scale.setScalar(1.7);
   whale.position.set(0, -1, -40);
   scenery.add(whale);
-  scenery.add(islets());
+  const isles = islets();
+  scenery.add(isles.group);
 
   const cliffs = cliffRing();
   scenery.add(cliffs.mesh);
@@ -67,8 +65,43 @@ export function buildWorld(scene, track) {
   scenery.add(falls.group);
   animated.push(falls.update);
 
+  // O que depende da pista é refeito a cada corrida (no Grand Prix cada
+  // corrida tem a pista desenhada por um jogador).
+  const trackGroup = new THREE.Group();
+  scene.add(trackGroup);
+  let current = null;
+  let spans = [];
+
+  function setTrack(t) {
+    if (t === current) return;
+    current = t;
+    for (const child of [...trackGroup.children]) {
+      trackGroup.remove(child);
+      child.traverse((o) => o.geometry?.dispose());
+    }
+    spans = [];
+    if (t.crossings.length) {
+      const bridges = bridgeTrack(t, water.material);
+      trackGroup.add(bridges.group);
+      spans = bridges.spans;
+    } else {
+      trackGroup.add(poolWalls(t));
+    }
+    trackGroup.add(finishLine(t));
+    // Ilhotas em cima da pista somem; a baleia fica sempre atrás dela.
+    isles.fit(t);
+    whale.position.z = Math.min(-40, (t.bounds.minZ - 13) / SCENERY_SCALE);
+  }
+  setTrack(track);
+
   return {
     center,
+    setTrack,
+    // Ponte fica transparente quando tem barco no túnel embaixo dela.
+    // boats: barcos com "total" (distância percorrida).
+    updateBridges(boats, dt) {
+      for (const span of spans) span.update(boats, dt);
+    },
     update(t, dt) {
       for (const fn of animated) fn(t, dt);
     },
@@ -108,6 +141,7 @@ function waterPlane(center) {
   mesh.position.set(center.x, 0, center.z);
   return {
     mesh,
+    material: mesh.material,
     update(t) {
       tex.offset.set(Math.sin(t * 0.25) * 0.08, t * 0.035);
     },
@@ -150,6 +184,138 @@ function poolWalls(track) {
   const group = new THREE.Group();
   group.add(extrude(outer), extrude(middle));
   return group;
+}
+
+// Pista desenhada com cruzamentos: muretas dos dois lados, acompanhando a
+// altura da água. Na passagem de cima a água sobe numa rampa (um aterro) e
+// atravessa o canal de baixo numa ponte; o canal de baixo segue no chão,
+// passando pelo túnel embaixo dela.
+const WALL_TOP = 1.2; // mureta acima da água
+const WALL_FOOT = -0.8; // até onde a mureta desce no chão
+const DECK = 1.4; // espessura da ponte, abaixo da água
+const STEP = 1; // metros entre as fatias das muretas
+
+function bridgeTrack(track, waterMaterial) {
+  const L = track.length;
+  const hw = track.halfWidth;
+  const top = new THREE.MeshLambertMaterial({ map: checkerTexture(PAL.violet, PAL.violetDark, 0.45), side: THREE.DoubleSide });
+  const side = new THREE.MeshLambertMaterial({ color: PAL.plum, flatShading: true, side: THREE.DoubleSide });
+  // mesma água da piscina (a textura animada é compartilhada), vista dos dois
+  // lados porque o sentido dos triângulos depende do sentido do desenho
+  const water = waterMaterial.clone();
+  water.side = THREE.DoubleSide;
+  const circ = (a, b) => {
+    const d = Math.abs((((a - b) % L) + L) % L);
+    return Math.min(d, L - d);
+  };
+  // em qual ponte está o ponto s (-1 = fora das pontes)
+  const spanOf = (s) => track.crossings.findIndex((c) => circ(s, c.over) < c.core);
+  const pieces = [-1, ...track.crossings.keys()].map(() => ({ top: [], topUv: [], side: [], water: [], waterUv: [] }));
+
+  const quad = (list, a, b, c, d) => list.push(...a, ...b, ...c, ...a, ...c, ...d);
+  // quad virado para cima (água): o sentido do desenho decide a ordem
+  const quadUp = (list, a, b, c, d) => {
+    const ny = (b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]);
+    if (ny >= 0) quad(list, a, b, c, d);
+    else quad(list, a, d, c, b);
+    return ny >= 0 ? [a, b, c, a, c, d] : [a, d, c, a, c, b];
+  };
+  const at = (s, lateral, y) => {
+    const p = pointAt(track, s, lateral);
+    return [p.x, y, p.z];
+  };
+  const waterUv = (p) => [p[0] / 520 + 0.5, -p[2] / 520 + 0.5];
+
+  const n = Math.ceil(L / STEP);
+  for (let i = 0; i < n; i++) {
+    const s0 = (i * L) / n;
+    const s1 = ((i + 1) * L) / n;
+    const piece = pieces[spanOf((s0 + s1) / 2) + 1];
+    const stations = [s0, s1].map((s) => {
+      const y = waterHeightAt(track, s);
+      return { s, y, foot: spanOf(s) >= 0 ? y - DECK : WALL_FOOT };
+    });
+    const [A, B] = stations;
+    for (const sign of [1, -1]) {
+      const inA = (y) => at(A.s, sign * (hw + 0.1), y);
+      const inB = (y) => at(B.s, sign * (hw + 0.1), y);
+      const outA = (y) => at(A.s, sign * (hw + 2.6), y);
+      const outB = (y) => at(B.s, sign * (hw + 2.6), y);
+      const t = [inA(A.y + WALL_TOP), outA(A.y + WALL_TOP), outB(B.y + WALL_TOP), inB(B.y + WALL_TOP)];
+      quad(piece.top, ...t);
+      for (const p of t) piece.topUv.push(p[0], -p[2]);
+      quad(piece.side, inA(A.y + WALL_TOP), inB(B.y + WALL_TOP), inB(B.y + WALL_FOOT), inA(A.y + WALL_FOOT));
+      quad(piece.side, outA(A.y + WALL_TOP), outA(A.foot), outB(B.foot), outB(B.y + WALL_TOP));
+    }
+    // água elevada (rampa e ponte) e, na ponte, o fundo do tabuleiro
+    if (A.y > 0.01 || B.y > 0.01) {
+      const w = [at(A.s, hw + 0.1, A.y + 0.02), at(A.s, -(hw + 0.1), A.y + 0.02), at(B.s, -(hw + 0.1), B.y + 0.02), at(B.s, hw + 0.1, B.y + 0.02)];
+      for (const p of quadUp(piece.water, ...w)) piece.waterUv.push(...waterUv(p));
+      if (piece !== pieces[0]) {
+        quad(piece.side, at(A.s, hw + 0.1, A.y - DECK), at(A.s, -(hw + 0.1), A.y - DECK), at(B.s, -(hw + 0.1), B.y - DECK), at(B.s, hw + 0.1, B.y - DECK));
+      }
+    }
+  }
+  // Paredes do aterro nas duas cabeceiras da ponte (a boca do túnel).
+  for (const c of track.crossings) {
+    for (const s of [c.over - c.core, c.over + c.core]) {
+      const y = waterHeightAt(track, s);
+      quad(pieces[0].side, at(s, hw + 2.6, y - DECK), at(s, -(hw + 2.6), y - DECK), at(s, -(hw + 2.6), WALL_FOOT), at(s, hw + 2.6, WALL_FOOT));
+    }
+  }
+
+  const group = new THREE.Group();
+  const build = (piece, mats) => {
+    const g = new THREE.Group();
+    const walls = new THREE.BufferGeometry();
+    walls.setAttribute('position', new THREE.Float32BufferAttribute([...piece.top, ...piece.side], 3));
+    // a textura xadrez só vale no topo; os lados são de cor chapada
+    walls.setAttribute('uv', new THREE.Float32BufferAttribute([...expandUv(piece.topUv), ...new Array((piece.side.length / 3) * 2).fill(0)], 2));
+    walls.addGroup(0, piece.top.length / 3, 0);
+    walls.addGroup(piece.top.length / 3, piece.side.length / 3, 1);
+    walls.computeVertexNormals();
+    g.add(new THREE.Mesh(walls, [mats.top, mats.side]));
+    if (piece.water.length) {
+      const water = new THREE.BufferGeometry();
+      water.setAttribute('position', new THREE.Float32BufferAttribute(piece.water, 3));
+      water.setAttribute('uv', new THREE.Float32BufferAttribute(piece.waterUv, 2));
+      // normal sempre para cima (o sentido dos triângulos depende do desenho),
+      // senão a luz trata a água como vista por baixo e ela fica escura
+      water.setAttribute('normal', new THREE.Float32BufferAttribute(piece.water.map((_, i) => (i % 3 === 1 ? 1 : 0)), 3));
+      g.add(new THREE.Mesh(water, mats.water));
+    }
+    return g;
+  };
+  group.add(build(pieces[0], { top, side, water }));
+
+  const spans = track.crossings.map((c, k) => {
+    const mats = { top: top.clone(), side: side.clone(), water: water.clone() };
+    const all = Object.values(mats);
+    group.add(build(pieces[k + 1], mats));
+    let opacity = 1;
+    return {
+      update(boats, dt) {
+        const under = boats.some((b) => circ(b.total ?? 0, c.under) < c.core + 6);
+        opacity += ((under ? 0.3 : 1) - opacity) * Math.min(1, dt * 8);
+        for (const m of all) {
+          m.opacity = opacity;
+          m.transparent = opacity < 0.99;
+          m.depthWrite = opacity >= 0.99;
+        }
+      },
+    };
+  });
+  return { group, spans };
+}
+
+// UVs do topo: um par por vértice, na mesma ordem dos triângulos (quad → 6).
+function expandUv(uv4) {
+  const out = [];
+  for (let i = 0; i < uv4.length; i += 8) {
+    const q = [0, 1, 2, 3].map((k) => [uv4[i + k * 2], uv4[i + k * 2 + 1]]);
+    for (const k of [0, 1, 2, 0, 2, 3]) out.push(...q[k]);
+  }
+  return out;
 }
 
 function whaleStatue() {
@@ -199,13 +365,27 @@ function palm(x, z, h, seed) {
 function islets() {
   const g = new THREE.Group();
   const spots = [[-62, -24], [64, -28], [-70, 16], [68, 12], [-34, -42], [36, -44]];
-  spots.forEach(([x, z], i) => {
-    g.add(part(new THREE.CylinderGeometry(5 + hash(i) * 3, 7 + hash(i) * 3, 2.4, 7), PAL.sand, [x, 0, z]));
-    g.add(part(new THREE.CylinderGeometry(3.5, 5, 1.2, 7), PAL.jungle, [x, 1.4, z]));
-    g.add(palm(x + 1, z, 7 + hash(i + 3) * 4, i));
-    g.add(part(new THREE.DodecahedronGeometry(1.6, 0), PAL.rockLow, [x - 2.5, 2, z + 1.5], [hash(i) * 3, hash(i + 1) * 3, 0]));
+  const items = spots.map(([x, z], i) => {
+    const isle = new THREE.Group();
+    isle.position.set(x, 0, z);
+    const r = 7 + hash(i) * 3;
+    isle.add(part(new THREE.CylinderGeometry(5 + hash(i) * 3, r, 2.4, 7), PAL.sand));
+    isle.add(part(new THREE.CylinderGeometry(3.5, 5, 1.2, 7), PAL.jungle, [0, 1.4, 0]));
+    isle.add(palm(1, 0, 7 + hash(i + 3) * 4, i));
+    isle.add(part(new THREE.DodecahedronGeometry(1.6, 0), PAL.rockLow, [-2.5, 2, 1.5], [hash(i) * 3, hash(i + 1) * 3, 0]));
+    g.add(isle);
+    return { isle, x: x * SCENERY_SCALE, z: z * SCENERY_SCALE, r: r * SCENERY_SCALE };
   });
-  return g;
+  return {
+    group: g,
+    // esconde as ilhotas que ficariam em cima da pista (ou da mureta dela)
+    fit(track) {
+      const clear = track.halfWidth + 3.5;
+      for (const it of items) {
+        it.isle.visible = !track.samples.some((a, k) => k % 4 === 0 && Math.hypot(a.x - it.x, a.z - it.z) < it.r + clear);
+      }
+    },
+  };
 }
 
 // Paredão da cratera: anéis em elipse ao redor da piscina, abrindo para cima.
