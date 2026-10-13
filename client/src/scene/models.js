@@ -40,11 +40,14 @@ function jetSki(color) {
   return g;
 }
 
-// Braços que saem dos ombros até o guidão.
-function arms(g, color, shoulderY, shoulderX = 0.45, shoulderZ = 0.1) {
+// Braços que saem dos ombros até o guidão, ou (pose "cheer", no pódio) para o
+// alto, com as mãos acima da cabeça em "top", segurando a taça.
+let pose = 'ride';
+function arms(g, color, shoulderY, shoulderX = 0.45, shoulderZ = 0.1, top = 2.8) {
+  g.userData.handsTop = top;
   for (const side of [-1, 1]) {
     const from = new THREE.Vector3(side * shoulderX, shoulderY, shoulderZ);
-    const to = new THREE.Vector3(side * 0.5, 1.25, 0.6);
+    const to = pose === 'cheer' ? new THREE.Vector3(side * 0.42, top, 0.05) : new THREE.Vector3(side * 0.5, 1.25, 0.6);
     const mid = from.clone().add(to).multiplyScalar(0.5);
     const len = from.distanceTo(to);
     const arm = part(CYL6, color, mid.toArray(), [0, 0, 0], [0.11, len, 0.11]);
@@ -67,7 +70,7 @@ const RIDERS = {
     g.add(part(ICO0, 0xb07a55, [0.13, 1.98, 0.2], [0, 0, 0], [0.17, 0.14, 0.14]));
     for (const s of [-1, 1]) g.add(part(CONE5, CREAM, [s * 0.12, 1.72, 0.24], [Math.PI, 0, 0], [0.06, 0.38, 0.06]));
     eyes(g, 2.22, 0.18, 0.15);
-    arms(g, color, 1.6, 0.5, -0.2);
+    arms(g, color, 1.6, 0.5, -0.2, 2.75);
     return g;
   },
   garca(color) {
@@ -79,7 +82,7 @@ const RIDERS = {
     g.add(part(CONE5, 0xf2c230, [0, 2.52, 0.38], [Math.PI / 2, 0, 0], [0.08, 0.7, 0.08])); // bico
     g.add(part(CONE5, 0x24142a, [0, 2.7, -0.38], [-1.9, 0, 0], [0.04, 0.45, 0.04])); // penacho
     eyes(g, 2.62, 0.1, 0.13, 0.05);
-    arms(g, 0x8e9bb5, 1.45, 0.38, -0.2);
+    arms(g, 0x8e9bb5, 1.45, 0.38, -0.2, 3.15);
     return g;
   },
   sapo(color) {
@@ -95,7 +98,7 @@ const RIDERS = {
       g.add(ring);
     }
     g.add(part(BOX, 0xf2c230, [0, 2.25, 0.12], [0, 0, 0], [0.1, 0.05, 0.05]));
-    arms(g, 0x5fae3a, 1.55, 0.55, -0.15);
+    arms(g, 0x5fae3a, 1.55, 0.55, -0.15, 2.75);
     return g;
   },
   cabra(color) {
@@ -110,7 +113,7 @@ const RIDERS = {
       g.add(part(CONE5, 0xd9c6a5, [s * 0.32, 2.12, -0.1], [0, 0, s * 1.8], [0.08, 0.28, 0.06])); // orelhas
     }
     eyes(g, 2.15, 0.2, 0.15, 0.06);
-    arms(g, 0xd9c6a5, 1.55, 0.45, -0.2);
+    arms(g, 0xd9c6a5, 1.55, 0.45, -0.2, 2.95);
     return g;
   },
 };
@@ -120,14 +123,17 @@ export function characterInfo(id) {
 }
 
 // Barco completo: grupo externo (posição/direção) > balanço > jet-ski + piloto.
-export function buildRacerModel(characterId) {
+// opts.cheer: braços para o alto (pódio); userData.handsTop = altura das mãos.
+export function buildRacerModel(characterId, opts = {}) {
   const info = characterInfo(characterId);
   const color = new THREE.Color(info.color).getHex();
   const root = new THREE.Group();
   const tilt = new THREE.Group();
   root.add(tilt);
   tilt.add(jetSki(color));
+  pose = opts.cheer ? 'cheer' : 'ride';
   const rider = RIDERS[info.id](color);
+  pose = 'ride';
   tilt.add(rider);
   // sombra falsa: um disco escuro na água
   const shadow = new THREE.Mesh(
@@ -138,6 +144,22 @@ export function buildRacerModel(characterId) {
   shadow.position.y = 0.04;
   shadow.scale.set(0.8, 1.5, 1);
   root.add(shadow);
-  root.userData = { tilt, rider, color: info.color };
+  root.userData = { tilt, rider, color: info.color, handsTop: rider.userData.handsTop };
   return root;
+}
+
+// Taça do Grand Prix: base, haste, copa e duas alças, em ouro chapado.
+export function buildTrophy() {
+  const gold = 0xffc23a;
+  const g = new THREE.Group();
+  g.add(part(CYL6, 0x3b2440, [0, 0.08, 0], [0, 0, 0], [0.42, 0.16, 0.42])); // base
+  g.add(part(CYL6, gold, [0, 0.2, 0], [0, 0, 0], [0.3, 0.1, 0.3]));
+  g.add(part(CYL6, gold, [0, 0.42, 0], [0, 0, 0], [0.08, 0.36, 0.08])); // haste
+  g.add(part(new THREE.CylinderGeometry(0.55, 0.22, 0.75, 7), gold, [0, 0.95, 0]));
+  g.add(part(new THREE.CylinderGeometry(0.58, 0.58, 0.08, 7), 0xffe08a, [0, 1.33, 0])); // borda
+  for (const s of [-1, 1]) {
+    const handle = part(new THREE.TorusGeometry(0.22, 0.06, 4, 8, Math.PI), gold, [s * 0.5, 1.0, 0], [0, 0, s * -Math.PI / 2]);
+    g.add(handle);
+  }
+  return g;
 }

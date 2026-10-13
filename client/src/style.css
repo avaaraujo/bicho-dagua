@@ -209,8 +209,11 @@ body.is-touch .controls-hint { display: none; }
 /* Sala */
 .lobby { width: min(480px, 100%); }
 .lobby-col { display: flex; flex-direction: column; gap: 14px; }
-@media (max-height: 560px) and (min-width: 640px) {
+/* lado a lado: celular deitado (tela baixa) e computador (tela larga) */
+@media (max-height: 560px) and (min-width: 640px), (min-width: 900px) {
   .lobby { width: min(860px, 100%); display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+}
+@media (max-height: 560px) and (min-width: 640px) {
   .slot { min-height: 46px; padding-block: 4px; }
   .room-code { font-size: 2.4rem; }
 }
@@ -535,4 +538,242 @@ body.is-racing .mute { right: auto; left: 50%; transform: translateX(-50%); }
   .hud-banner, .toast, .btn { transition: none; }
   .hud-banner[data-tone='warn'].is-on { animation: none; }
   .rotate-phone { animation: none; transform: rotate(-90deg); }
+}
+
+/* ---------- Grand Prix ---------- */
+
+/* Modo de jogo na sala */
+.modes { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mode {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px 12px;
+  text-align: left;
+  border-radius: 12px;
+  border: 3px solid var(--plum-deep);
+  background: var(--plum-deep);
+  color: var(--cream);
+  font: 600 0.84rem/1.3 var(--body);
+  cursor: pointer;
+  transition: background 120ms ease-out, border-color 120ms ease-out;
+}
+.mode-name { font: 400 1.15rem var(--display); letter-spacing: 0.01em; }
+.mode-desc { color: var(--cream-dim); }
+.mode:hover:not(:disabled) { background: #33203a; }
+.mode[aria-pressed='true'] { border-color: var(--magma); background: #4a2a4e; box-shadow: 0 0 0 2px var(--magma-hot) inset; }
+.mode:disabled { cursor: default; }
+.mode:disabled:not([aria-pressed='true']) { opacity: 0.5; }
+@media (max-height: 560px) and (min-width: 640px) {
+  .mode { padding: 6px 10px 8px; }
+  .mode-desc { font-size: 0.76rem; }
+}
+/* celular deitado: modo e pilotos mais baixos, para o Largar! caber sem rolar */
+@media (max-height: 430px) and (min-width: 640px) {
+  .lobby { gap: 16px; padding: 14px 18px; }
+  .lobby-col { gap: 10px; }
+  .mode { padding: 4px 9px 6px; gap: 1px; }
+  .mode-name { font-size: 1rem; }
+  .mode-desc { font-size: 0.72rem; line-height: 1.2; }
+  .pick { padding: 4px 4px 6px; }
+  .pick img { max-width: 48px; }
+  .slot { min-height: 40px; padding-block: 2px; }
+}
+
+/* Sorteio, folha e espera */
+.draw-screen > .panel { margin-block: auto; }
+.draw-title { margin: 0; font-size: clamp(1.9rem, 5vw, 2.8rem); text-align: center; line-height: 1.05; }
+.draw-intro { width: min(560px, 100%); align-items: center; }
+.draw-note { margin: 0; max-width: 46ch; text-align: center; color: var(--cream-dim); }
+.draw-note:empty { display: none; }
+
+.roulette {
+  list-style: none;
+  margin: 4px 0;
+  padding: 0;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 10px;
+}
+.roulette-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 6px 8px;
+  border-radius: 14px;
+  border: 3px solid var(--plum-deep);
+  background: var(--plum-deep);
+  font-weight: 800;
+  transition: transform 90ms ease-out, background 90ms ease-out;
+}
+.roulette-slot img { width: 76px; height: 76px; image-rendering: pixelated; }
+.roulette-slot span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.roulette-slot.is-lit { border-color: var(--magma); background: #4a2a4e; transform: translateY(-4px); }
+.roulette-slot.is-chosen { box-shadow: 0 0 0 3px var(--magma-hot), 0 10px 18px rgba(20, 8, 24, 0.5); animation: chosen 420ms cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes chosen { from { transform: translateY(-4px) scale(0.86); } to { transform: translateY(-4px) scale(1); } }
+
+.sheet {
+  align-self: stretch;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sheet-bar {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 14px;
+  padding-right: 56px; /* botão de som */
+}
+.sheet-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.sheet-title { margin: 0; font-size: clamp(1.5rem, 3.6vw, 2.4rem); line-height: 1.05; }
+.sheet-hint {
+  margin: 0;
+  max-width: 62ch;
+  font-weight: 800;
+  text-shadow: 0 2px 0 var(--plum-deep), 0 0 10px rgba(36, 20, 42, 0.9);
+}
+.sheet-hint.is-nudge { color: var(--teal-light); animation: nudge 360ms ease-out; }
+@keyframes nudge { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
+.clock {
+  margin: 0;
+  min-width: 2ch;
+  font-size: clamp(2.4rem, 6vw, 3.8rem);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  line-height: 1;
+}
+.clock.is-low { background: linear-gradient(180deg, #fff3c4, var(--magma-hot) 45%, var(--magma) 55%, #ffb36b); -webkit-background-clip: text; background-clip: text; animation: tick 1s ease-out infinite; }
+@keyframes tick { 0% { transform: scale(1.18); } 40%, 100% { transform: scale(1); } }
+.paper-wrap { flex: 1 1 auto; min-height: 0; display: grid; place-items: center; }
+.paper {
+  display: block;
+  border-radius: 6px;
+  background: radial-gradient(ellipse at 50% 45%, #fffefb 55%, #f2ece2 100%);
+  box-shadow: 0 3px 0 #d9cfc0, 0 14px 30px rgba(20, 8, 24, 0.55);
+  touch-action: none;
+  cursor: crosshair;
+}
+.sheet.is-sent .paper { cursor: progress; }
+
+.draw-wait { width: min(440px, 100%); align-items: center; text-align: center; }
+.draw-wait-face { width: 88px; height: 88px; border-radius: 16px; border: 3px solid var(--plum-deep); background: var(--plum-line); image-rendering: pixelated; }
+.draw-wait-title { margin: 0; max-width: 24ch; font: 800 1.3rem/1.25 var(--body); text-wrap: balance; }
+.scribble {
+  width: 180px;
+  height: 86px;
+  padding: 4px;
+  border-radius: 8px;
+  background: #fffdf8;
+  box-shadow: 0 3px 0 #d9cfc0, 0 8px 16px rgba(20, 8, 24, 0.45);
+  overflow: visible;
+}
+.scribble-line { fill: none; stroke: #262229; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: scribble 2.6s linear infinite; }
+@keyframes scribble { to { stroke-dashoffset: 0; } }
+.scribble-pencil polygon { stroke: var(--plum-deep); stroke-width: 1.3; stroke-linejoin: round; }
+.pencil-body { fill: var(--magma-hot); }
+.pencil-cap { fill: var(--plum-line); }
+.pencil-tip { fill: #f3d2ae; }
+.scribble-pencil .pencil-lead { fill: #262229; stroke: none; }
+
+@media (max-height: 520px) {
+  .draw-title { font-size: 1.7rem; }
+  .roulette-slot img { width: 56px; height: 56px; }
+  .sheet-hint { font-size: 0.88rem; }
+  .draw-wait { gap: 8px; padding: 16px; }
+  .draw-wait-face { width: 64px; height: 64px; }
+  .scribble { width: 140px; height: 66px; }
+}
+
+/* Classificação do Grand Prix (resultado entre corridas e pódio) */
+.podium.is-gp li { grid-template-columns: 44px 40px 1fr auto auto; }
+.podium.is-gp .pos { font-size: 1.6rem; }
+.standing-name { display: flex; flex-direction: column; min-width: 0; }
+.standing-name .slot-name { line-height: 1.15; }
+.standing-sub { font-size: 0.8rem; font-weight: 800; color: var(--peach); }
+.gained { font: 400 1rem var(--display); color: var(--magma-hot); font-variant-numeric: tabular-nums; }
+.gained:empty { display: none; }
+.pts { font: 400 1.35rem var(--display); font-variant-numeric: tabular-nums; min-width: 3ch; text-align: right; }
+.pts small { font: 800 0.7rem var(--body); color: var(--peach); margin-left: 2px; }
+
+/* celular deitado: resultado em duas colunas (título e botões | classificação) */
+@media (max-height: 430px) and (min-width: 640px) {
+  .results { width: min(780px, 100%); display: grid; grid-template-columns: 0.85fr 1.15fr; column-gap: 18px; row-gap: 8px; align-content: center; padding: 14px 18px; }
+  .results > :not(.podium) { grid-column: 1; }
+  .results > .podium { grid-column: 2; grid-row: 1 / span 6; align-self: center; gap: 6px; }
+  .results-title { font-size: 1.9rem; }
+  .podium li { padding-block: 4px; }
+  .podium .slot-face { width: 32px; height: 32px; }
+}
+
+/* Pódio final */
+.final-screen { align-items: flex-end; }
+.final-title {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  left: 50%;
+  margin: 0;
+  transform: translateX(-50%) rotate(-3deg);
+  font-size: clamp(2.6rem, 8vw, 5rem);
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.final-panel { width: min(380px, 100%); margin-block: auto; }
+.final-winner { margin: 0; font: 800 1.15rem/1.3 var(--body); text-align: center; text-wrap: balance; }
+.standings { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.standings li {
+  display: grid;
+  grid-template-columns: 40px 36px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px 6px 6px;
+  background: var(--plum-deep);
+  border-radius: 12px;
+}
+.standings li.is-me { box-shadow: 0 0 0 3px var(--teal) inset; }
+.standings .pos { font-size: 1.4rem; text-align: center; }
+.standings .slot-face { width: 36px; height: 36px; }
+@media (orientation: portrait), (max-width: 700px) {
+  .final-screen { align-items: center; }
+  .final-panel { margin-top: auto; margin-bottom: 0; }
+}
+@media (max-height: 520px) {
+  .final-title { font-size: 2.4rem; top: 8px; }
+  .final-panel { gap: 8px; padding: 14px; }
+  .standings li { padding-block: 3px; }
+}
+
+/* celular deitado: título sobre a cena, painel compacto ao lado do botão de som */
+@media (max-height: 520px) and (orientation: landscape) {
+  .final-title { left: 30%; top: 10px; font-size: 2.3rem; }
+  .final-panel { width: min(360px, 100%); margin-right: 52px; gap: 6px; padding: 12px 14px; }
+  .final-winner { font-size: 0.95rem; }
+  .standings { gap: 4px; }
+  .standings li { padding-block: 2px; }
+  .standings .slot-face { width: 30px; height: 30px; }
+  .final-panel .btn-primary { padding-block: 9px; }
+}
+/* celular em pé: título menor, sem encostar no botão de som */
+@media (orientation: portrait) {
+  .final-title { left: calc(50% - 26px); font-size: 2.2rem; }
+}
+
+/* Linha do Grand Prix no HUD, embaixo da volta */
+.hud-gp {
+  margin-top: 6px;
+  font: 800 clamp(0.8rem, 1.6vw, 1rem)/1.2 var(--body);
+  color: var(--cream);
+  text-shadow: 0 2px 0 var(--plum-deep), 0 0 10px rgba(36, 20, 42, 0.9);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roulette-slot, .mode { transition: none; }
+  .roulette-slot.is-chosen, .sheet-hint.is-nudge, .clock.is-low, .scribble-line { animation: none; }
+  .scribble-line { stroke-dashoffset: 0; }
 }

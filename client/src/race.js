@@ -6,6 +6,7 @@ import {
 } from '../../shared/physics.js';
 import { createBrain, botInput } from '../../shared/bot.js';
 import { PHYSICS_DT, TICK_RATE } from '../../shared/constants.js';
+import { projectOnTrack, waterHeightAt } from '../../shared/track.js';
 import { buildRacerModel } from './scene/models.js';
 import { RaceCamera } from './camera.js';
 
@@ -46,9 +47,10 @@ function nameTag(text, color) {
   return sprite;
 }
 
-// Atualiza o modelo 3D a partir de um estado de barco.
+// Atualiza o modelo 3D a partir de um estado de barco (b.y = altura da água
+// embaixo dele, que sobe nas pontes).
 export function poseModel(model, b, t, phase = 0) {
-  model.position.set(b.x, 0.12 + Math.sin(t * 3.2 + phase) * 0.07, b.z);
+  model.position.set(b.x, (b.y ?? 0) + 0.12 + Math.sin(t * 3.2 + phase) * 0.07, b.z);
   model.rotation.y = b.h;
   const { tilt } = model.userData;
   tilt.rotation.z = -(b.lean || 0) * 0.9;
@@ -57,7 +59,7 @@ export function poseModel(model, b, t, phase = 0) {
 
 export class Race {
   constructor(opts) {
-    Object.assign(this, opts); // scene, camera, track, net, myId, start, hud, input, audio, spray, onFinishedLocal
+    Object.assign(this, opts); // scene, camera, track, world, net, myId, start, hud, input, audio, spray, onFinishedLocal
     this.entries = new Map();
     this.group = new THREE.Group();
     this.scene.add(this.group);
@@ -191,10 +193,10 @@ export class Race {
         else if (go && !this.ended) input = this.input.read();
         const before = b.bump;
         if (go || this.finishedLocal) stepBoat(b, input, PHYSICS_DT, this.track);
-        for (const e of this.entries.values()) if (!e.isMe) collideBoats(b, e.display, true);
+        for (const e of this.entries.values()) if (!e.isMe) collideBoats(b, e.display, true, this.track);
         if (b.bump > before + 0.15) {
           this.audio.bump(b.bump);
-          this.spray.splash(b.x + Math.sin(b.h) * 1.5, b.z + Math.cos(b.h) * 1.5, b.bump);
+          this.spray.splash(b.x + Math.sin(b.h) * 1.5, b.z + Math.cos(b.h) * 1.5, b.bump, b.y ?? 0);
           this.shake = Math.max(this.shake, b.bump * 0.6);
         }
       }
@@ -212,10 +214,12 @@ export class Race {
 
     for (const e of this.entries.values()) {
       if (!e.isMe) this.interpolate(e);
+      e.display.y = this.waterUnder(e.display);
       poseModel(e.model, e.display, t, e.phase);
       const sp = Math.abs(forwardSpeed(e.display));
       if (sp > 4) this.spray.trail(e.display, sp, dt);
     }
+    this.world?.updateBridges([...this.entries.values()].map((e) => e.display), dt);
 
     if (b) {
       this.placeCamera(false, dt);
@@ -305,12 +309,21 @@ export class Race {
     const portrait = this.camera.aspect < 1;
     const back = portrait ? 11 : 9;
     const up = portrait ? 5.2 : 4.4;
-    const target = new THREE.Vector3(b.x - fx * back, up, b.z - fz * back);
+    const lift = b.y ?? 0;
+    const target = new THREE.Vector3(b.x - fx * back, up + lift, b.z - fz * back);
     if (snap) this.camera.position.copy(target);
     else this.camera.position.lerp(target, 1 - Math.exp(-dt * 5));
     const sx = (Math.random() - 0.5) * this.shake;
     const sy = (Math.random() - 0.5) * this.shake;
-    this.camera.lookAt(b.x + fx * 8 + sx, 1.3 + sy, b.z + fz * 8);
+    this.camera.lookAt(b.x + fx * 8 + sx, 1.3 + lift + sy, b.z + fz * 8);
+  }
+
+  // Altura da água embaixo de um barco: procura onde ele está na pista perto
+  // da distância que ele já percorreu, para não confundir ponte com túnel.
+  waterUnder(b) {
+    if (!this.track.crossings.length) return 0;
+    const s = b === this.myBoat && b._proj ? b._proj.s : projectOnTrack(this.track, b.x, b.z, b.total ?? null).s;
+    return waterHeightAt(this.track, s);
   }
 
   end() {
@@ -352,7 +365,7 @@ export class Showcase {
         const { input, speedMul } = botInput(r.boat, r.brain, this.track, PHYSICS_DT, undefined, this.racers.map((x) => x.boat));
         stepBoat(r.boat, input, PHYSICS_DT, this.track, speedMul * 0.85);
       }
-      for (let i = 0; i < 4; i++) for (let j = i + 1; j < 4; j++) collideBoats(this.racers[i].boat, this.racers[j].boat);
+      for (let i = 0; i < 4; i++) for (let j = i + 1; j < 4; j++) collideBoats(this.racers[i].boat, this.racers[j].boat, false, this.track);
     }
     for (const r of this.racers) {
       poseModel(r.model, r.boat, t, r.phase);

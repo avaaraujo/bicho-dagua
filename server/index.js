@@ -6,6 +6,7 @@ import path from 'node:path';
 import { existsSync } from 'node:fs';
 import { Room } from './room.js';
 import { ROOM_CODE_LENGTH } from '../shared/constants.js';
+import { sketchToTrack } from '../shared/sketch.js';
 
 const PORT = Number(process.env.PORT) || 3000;
 const root = path.dirname(fileURLToPath(import.meta.url));
@@ -81,9 +82,28 @@ io.on('connection', (socket) => {
 
   socket.on('room:leave', () => leaveCurrent());
   socket.on('lobby:character', (character) => room?.setCharacter(socket.id, character));
+  socket.on('lobby:mode', (mode) => room?.setMode(socket.id, mode));
   socket.on('lobby:start', () => room?.start(socket.id));
+  socket.on('gp:sketch', (points) => room?.submitSketch(socket.id, points));
   socket.on('race:state', (msg) => room?.clientState(socket.id, msg));
   socket.on('race:again', () => room?.backToLobby(socket.id));
+
+  // Só para testar pistas desenhadas antes do Grand Prix existir: com
+  // BICHO_DEV=1, scripts/dev-sketch.js manda um desenho para a próxima largada.
+  if (process.env.BICHO_DEV === '1') {
+    socket.on('dev:sketch', ({ code, points, forceClose } = {}, ack) => {
+      const r = rooms.get(String(code ?? '').toUpperCase());
+      const result = sketchToTrack(points, { forceClose: !!forceClose });
+      if (r && result.ok) r.setNextTrack(result);
+      if (typeof ack === 'function') ack({ ok: !!r && result.ok, reason: r ? result.reason : 'sala não existe', crossings: result.crossings?.length });
+    });
+    // encerra a corrida da sala na hora, com a classificação do momento
+    socket.on('dev:finish', ({ code } = {}, ack) => {
+      const r = rooms.get(String(code ?? '').toUpperCase());
+      if (r && (r.state === 'racing' || r.state === 'countdown')) r.finish((Date.now() - r.raceStart) / 1000);
+      if (typeof ack === 'function') ack({ ok: !!r, state: r?.state });
+    });
+  }
   socket.on('disconnect', () => leaveCurrent());
 });
 

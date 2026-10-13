@@ -13,6 +13,8 @@ import { createInput } from './input.js';
 import { createHud } from './hud.js';
 import { createAudio } from './audio.js';
 import { Race, Showcase } from './race.js';
+import { createDrawScreen } from './draw.js';
+import { Podium } from './scene/podium.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -64,6 +66,7 @@ renderer.setPixelRatio(1);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(65, 16 / 9, 0.5, 900);
+// Pista do Quick Play: a dos menus e a de toda corrida que não traz outra.
 const track = buildTrack();
 const world = buildWorld(scene, track);
 const spray = createSpray(scene);
@@ -94,14 +97,15 @@ const app = {
   race: null,
   showcase: new Showcase({ scene, camera, track, spray, center: world.center }),
   lastResults: null,
+  podium: null, // cena do campeão no fim do Grand Prix
 };
 
-const screens = ['screen-home', 'screen-lobby', 'screen-results'];
+const screens = ['screen-home', 'screen-lobby', 'screen-results', 'screen-draw', 'screen-final'];
 function showScreen(id) {
   for (const s of screens) $(s).hidden = s !== id;
   document.body.classList.toggle('is-racing', id === null);
-  // Aviso de "deite o celular": na sala e na corrida, não na tela inicial.
-  document.body.classList.toggle('wants-landscape', id === null || id === 'screen-lobby');
+  // Aviso de "deite o celular": na sala, no desenho e na corrida, não na tela inicial.
+  document.body.classList.toggle('wants-landscape', id === null || id === 'screen-lobby' || id === 'screen-draw');
 }
 $('btn-rotate-skip').addEventListener('click', () => document.body.classList.add('rotate-skipped'));
 
@@ -140,6 +144,13 @@ const portraits = {};
   r.forceContextLoss?.();
 })();
 
+// ---------- Grand Prix: sorteio e desenho ----------
+const drawScreen = createDrawScreen({
+  portraits,
+  onSubmit: (points) => app.socket?.emit('gp:sketch', points),
+});
+if (matchMedia('(prefers-reduced-motion: reduce)').matches) document.querySelector('.scribble')?.pauseAnimations?.();
+
 // ---------- rede ----------
 function connect() {
   if (app.socket) return app.socket;
@@ -166,8 +177,15 @@ function connect() {
     app.room = room;
     if (room.state === 'lobby') {
       if (app.race) leaveRace();
+      endPodium();
+      drawScreen.hide();
       renderLobby();
       showScreen('screen-lobby');
+    } else if (room.state === 'drawing' && room.gp?.draw) {
+      if (app.race) leaveRace();
+      app.lastResults = null;
+      showScreen('screen-draw');
+      drawScreen.show(room.gp.draw, { myId: app.myId, players: room.players, races: room.gp.races });
     } else if (room.state === 'results' && !$('screen-results').hidden) {
       renderResults();
     }
@@ -181,6 +199,10 @@ function connect() {
     setTimeout(() => {
       if (!app.lastResults || app.room?.state !== 'results') return;
       leaveRace();
+      if (app.lastResults.gp?.final) {
+        startPodium();
+        return;
+      }
       renderResults();
       showScreen('screen-results');
     }, 2600);
@@ -318,6 +340,12 @@ function renderLobby() {
     picker.append(b);
   }
 
+  for (const b of $('lobby-modes').querySelectorAll('.mode')) {
+    b.setAttribute('aria-pressed', String(b.dataset.mode === (room.mode ?? 'quick')));
+    b.disabled = !isHost();
+  }
+  $('btn-start').textContent = room.mode === 'gp' ? 'Começar o Grand Prix' : 'Largar!';
+
   const host = room.players.find((p) => p.id === room.hostId);
   $('btn-start').hidden = !isHost();
   const bots = 4 - room.players.length;
@@ -326,6 +354,12 @@ function renderLobby() {
     : `Esperando ${host?.name ?? 'o anfitrião'} largar…`;
 }
 
+for (const b of $('lobby-modes').querySelectorAll('.mode')) {
+  b.addEventListener('click', () => {
+    if (!isHost()) return;
+    app.socket.emit('lobby:mode', b.dataset.mode);
+  });
+}
 $('btn-start').addEventListener('click', () => {
   audio.unlock();
   app.socket.emit('lobby:start');
@@ -343,23 +377,63 @@ function leaveRoom() {
   app.socket?.emit('room:leave');
   app.room = null;
   leaveRace();
+  endPodium();
+  drawScreen.hide();
   history.replaceState(null, '', location.pathname);
   showScreen('screen-home');
 }
 $('btn-leave').addEventListener('click', leaveRoom);
 $('btn-results-leave').addEventListener('click', leaveRoom);
+$('btn-final-leave').addEventListener('click', leaveRoom);
+$('btn-final-back').addEventListener('click', () => app.socket.emit('race:again'));
 
 // ---------- corrida ----------
 function startRace(start) {
   leaveRace();
+  drawScreen.hide();
+  // Corrida com pista desenhada (Grand Prix): o servidor manda os pontos.
+  const raceTrack = start.track ? buildTrack(start.track.raw, undefined, start.track.crossings) : track;
+  world.setTrack(raceTrack);
   app.lastResults = null;
   app.showcase.group.visible = false;
   showScreen(null);
   $('touch').hidden = !isTouch;
   app.race = new Race({
-    scene, camera, track, net: app.socket, myId: app.myId, start, hud, input, audio, spray,
+    scene, camera, track: raceTrack, world, net: app.socket, myId: app.myId, start, hud, input, audio, spray,
     autopilot: AUTOPILOT,
   });
+  if (start.gp) {
+    const by = start.gp.fallback ? 'piscina clássica' : `desenhada por ${start.gp.drawerName}`;
+    hud.gp(`Pista ${start.gp.race} de ${start.gp.races} · ${by}`);
+    if (start.gp.fallback) toast('O desenho não virou pista: esta corrida é na piscina clássica.');
+  }
+}
+
+// ---------- fim do Grand Prix: pódio ----------
+function startPodium() {
+  const res = app.lastResults;
+  endPodium();
+  app.showcase.group.visible = false;
+  world.setTrack(track);
+  app.podium = new Podium({ scene, camera, table: res.gp.table });
+  const winner = res.gp.table[0];
+  $('final-title').textContent = winner.id === app.myId ? 'Você venceu!' : 'Campeão!';
+  $('final-winner').textContent = winner.id === app.myId
+    ? `Você levou a taça do Grand Prix com ${winner.points} pontos.`
+    : `${winner.name} levou a taça do Grand Prix com ${winner.points} pontos.`;
+  renderStandings($('final-list'), res.gp.table, false);
+  $('btn-final-back').hidden = !isHost();
+  const host = app.room?.players.find((p) => p.id === app.room.hostId);
+  $('final-wait').textContent = isHost() ? '' : `Esperando ${host?.name ?? 'o anfitrião'} voltar para a sala…`;
+  showScreen('screen-final');
+  audio.fanfare(winner.id === app.myId);
+}
+
+function endPodium() {
+  if (!app.podium) return;
+  app.podium.dispose();
+  app.podium = null;
+  app.showcase.group.visible = true;
 }
 
 function leaveRace() {
@@ -369,6 +443,7 @@ function leaveRace() {
   }
   $('touch').hidden = true;
   app.showcase.group.visible = true;
+  world.setTrack(track);
 }
 
 function formatTime(t) {
@@ -378,13 +453,70 @@ function formatTime(t) {
   return `${m}:${s}`;
 }
 
+// Classificação do Grand Prix: posição, retrato, nome (e a colocação nesta
+// corrida), pontos ganhos agora e o total.
+function renderStandings(list, table, withRace, results = []) {
+  list.innerHTML = '';
+  table.forEach((r, i) => {
+    const li = document.createElement('li');
+    if (r.id === app.myId) li.className = 'is-me';
+    const pos = document.createElement('span');
+    pos.className = 'pos chrome';
+    pos.textContent = `${i + 1}º`;
+    const img = document.createElement('img');
+    img.className = 'slot-face';
+    img.src = portraits[r.character];
+    img.alt = characterInfo(r.character).name;
+    const who = document.createElement('span');
+    who.className = 'standing-name';
+    const name = document.createElement('span');
+    name.className = 'slot-name';
+    name.textContent = r.name + (r.id === app.myId ? ' (você)' : '');
+    who.append(name);
+    const place = results.find((x) => x.id === r.id)?.place;
+    if (withRace && place) {
+      const sub = document.createElement('span');
+      sub.className = 'standing-sub';
+      sub.textContent = `${place}º nesta corrida`;
+      who.append(sub);
+    }
+    const pts = document.createElement('span');
+    pts.className = 'pts';
+    pts.innerHTML = '<small>pts</small>';
+    pts.prepend(String(r.points));
+    if (withRace) {
+      const gained = document.createElement('span');
+      gained.className = 'gained';
+      gained.textContent = r.gained ? `+${r.gained}` : '';
+      li.append(pos, img, who, gained, pts);
+    } else {
+      li.append(pos, img, who, pts);
+    }
+    list.append(li);
+  });
+}
+
 function renderResults() {
   const res = app.lastResults;
   if (!res) return;
+  const list = $('results-list');
+  list.classList.toggle('is-gp', !!res.gp);
+  if (res.gp) {
+    $('results-title').textContent = `Corrida ${res.gp.race} de ${res.gp.races}`;
+    $('results-sub').textContent = res.draw
+      ? 'Ninguém completou as 5 voltas: os pontos foram para quem foi mais longe.'
+      : 'Classificação do Grand Prix';
+    renderStandings(list, res.gp.table, true, res.results);
+    $('btn-again').textContent = 'Próxima corrida';
+    $('btn-again').hidden = !isHost();
+    const host = app.room?.players.find((p) => p.id === app.room.hostId);
+    $('results-wait').textContent = isHost() ? '' : `Esperando ${host?.name ?? 'o anfitrião'} chamar a próxima corrida…`;
+    return;
+  }
+  $('btn-again').textContent = 'Correr de novo';
   const mine = res.results.find((r) => r.id === app.myId);
   $('results-title').textContent = res.draw ? 'Empate!' : mine?.place === 1 ? 'Você venceu!' : 'Resultado';
   $('results-sub').textContent = res.draw ? 'Ninguém completou as 5 voltas em 3 minutos.' : '';
-  const list = $('results-list');
   list.innerHTML = '';
   res.results.forEach((r, i) => {
     const li = document.createElement('li');
@@ -436,7 +568,9 @@ function frame(now) {
   elapsed += dt;
   world.update(elapsed, dt);
   if (app.race) app.race.update(dt, elapsed, performance.now());
+  else if (app.podium) app.podium.update(elapsed, dt);
   else app.showcase.update(dt, elapsed);
+  drawScreen.update(dt);
   spray.update(dt);
   renderer.render(scene, camera);
   requestAnimationFrame(frame);

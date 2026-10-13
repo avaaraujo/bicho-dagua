@@ -12,6 +12,7 @@ export function createHud(track) {
     time: $('hud-time'),
     banner: $('hud-banner'),
     board: $('hud-board'),
+    gp: $('hud-gp'),
   };
   let bannerTimer = 0;
   let bannerSticky = false;
@@ -54,6 +55,12 @@ export function createHud(track) {
     reset() {
       last = { lap: '', place: '', time: '', board: '' };
       this.banner('', 0);
+      this.gp('');
+    },
+    // linha do Grand Prix embaixo da volta ("Pista 2 de 4 · desenhada por Ana")
+    gp(text) {
+      el.gp.textContent = text;
+      el.gp.hidden = !text;
     },
     lap(n, total) {
       setText(el.lap, 'lap', `${Math.min(n, total)}/${total}`);
