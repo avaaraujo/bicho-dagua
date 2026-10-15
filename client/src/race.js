@@ -299,6 +299,7 @@ export class Race {
       this.raceCamera.update(this.framePoints(), dt, snap, this.shake);
       return;
     }
+    if (this.camera.view) this.camera.clearViewOffset();
     if (this.camera.fov !== (this.camera.aspect < 1 ? 82 : 65)) {
       this.camera.fov = this.camera.aspect < 1 ? 82 : 65;
       this.camera.updateProjectionMatrix();

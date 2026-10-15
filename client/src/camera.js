@@ -72,12 +72,21 @@ export class RaceCamera {
     // tamanho na tela: largura (eixo horizontal da tela) e profundidade
     const halfW = portrait ? hd : hw;
     const halfD = portrait ? hw : hd;
-    // folga extra para o HUD nos cantos
-    const dist = Math.max(halfW / tanH, (halfD * Math.sin(pitch)) / tanV) * (portrait ? 1.2 : 1.28);
+    // zona morta: o enquadramento cabe só na parte da tela que o HUD e os
+    // botões não cobrem, e a projeção desloca esse retângulo para o centro
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    const ins = safeInsets(W, H, portrait);
+    const fracW = Math.max(0.5, (W - ins.l - ins.r) / W);
+    const fracH = Math.max(0.5, (H - ins.t - ins.b) / H);
+    const dist = Math.max(halfW / (tanH * fracW), (halfD * Math.sin(pitch)) / (tanV * fracH)) * 1.08;
     const up = Math.sin(pitch) * dist;
     const back = Math.cos(pitch) * dist;
-    // mira um pouco "atrás" do centro: a pista desce na tela e sobra lugar para o HUD de cima
-    const lead = dist * 0.06;
+    const offX = Math.round((ins.l - ins.r) / 2);
+    const offY = Math.round((ins.t - ins.b) / 2);
+    if (offX || offY) camera.setViewOffset(W, H, -offX, -offY, W, H);
+    else camera.clearViewOffset();
+    const lead = 0;
     const sx = (Math.random() - 0.5) * shake;
     if (portrait) {
       camera.position.set(cx - lead + back, up, cz + sx);
@@ -87,6 +96,14 @@ export class RaceCamera {
       camera.lookAt(cx, 0, cz - lead);
     }
   }
+}
+
+// Pixels da tela cobertos pelo HUD/botões (t=topo, b=base, l/r=lados).
+function safeInsets(W, H, portrait) {
+  const touch = document.body.classList.contains('is-touch');
+  if (!touch) return { t: 80, b: 24, l: 0, r: 0 };
+  if (portrait) return { t: Math.min(170, H * 0.24), b: Math.min(250, H * 0.3), l: 0, r: 0 };
+  return { t: 64, b: Math.min(110, H * 0.28), l: 0, r: 0 };
 }
 
 function clamp(v, lo, hi) {
