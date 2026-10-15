@@ -5,9 +5,11 @@ An online jet-ski race for up to 4 friends, played in the browser. Four animal r
 ![Four animal racers on jet-skis cornering around the checkered center wall of the pool, with the lap counter, timer, standings and position on the HUD](.github/readme/race.gif)
 
 <p>
+  <img src=".github/readme/title.jpg" width="49%" alt="Title screen: the chrome Bicho d'Água logo over the pool, a name field, Criar sala and a room-code field">
   <img src=".github/readme/lobby.jpg" width="49%" alt="Lobby: room code, empty slots that become bots, the Quick Play and Grand Prix modes, and the four racers: Morsa, Garça, Sapo and Cabra">
-  <img src=".github/readme/phone.jpg" width="49%" alt="The race on a phone held sideways, with on-screen steering, brake and accelerate buttons">
 </p>
+
+![The race on a phone held sideways, with on-screen steering, brake and accelerate buttons](.github/readme/phone.jpg)
 
 > The game's interface is in Brazilian Portuguese. The server runs on Render's free plan, so the first visit after a quiet spell takes about a minute to wake it up.
 
@@ -21,7 +23,7 @@ Party games always had that one minigame everyone asked for again: a short water
 
 <p>
   <img src="docs/keyvisuals/03-lowpoly-anos-90.jpg" width="49%" alt="Key visual 3: animal racers on jet-skis in a volcano crater, with lava falls, a stone whale and a chrome HUD">
-  <img src=".github/readme/race.jpg" width="49%" alt="The same direction in the shipped game: the pool from above, the chrome lap counter and the big position number">
+  <img src=".github/readme/race.jpg" width="49%" alt="The same direction in the shipped game: the pack bunched up on a corner, the chrome lap counter and the big position number">
 </p>
 
 <sub>Left: the key visual. Right: the game. The other five directions are in [docs/keyvisuals](docs/keyvisuals/README.md).</sub>
