@@ -567,6 +567,7 @@ function frame(now) {
   lastFrame = now;
   elapsed += dt;
   world.update(elapsed, dt);
+  if (!app.race && camera.view) camera.clearViewOffset(); // deslocamento da câmera da corrida
   if (app.race) app.race.update(dt, elapsed, performance.now());
   else if (app.podium) app.podium.update(elapsed, dt);
   else app.showcase.update(dt, elapsed);

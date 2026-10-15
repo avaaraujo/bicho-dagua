@@ -422,10 +422,16 @@ kbd {
 }
 
 /* Em telas de toque a colocação sobe, para dar lugar aos botões */
-body.is-touch .hud-board { min-width: 0; padding: 4px; gap: 2px; }
-body.is-touch .hud-board li { font-size: 0.8rem; grid-template-columns: 22px 10px auto; padding: 1px 6px 1px 2px; }
+body.is-touch .hud-board { min-width: 0; padding: 3px; gap: 1px; top: calc(max(10px, env(safe-area-inset-top)) + 36px); border-width: 2px; border-radius: 8px; }
+body.is-touch .hud-board li { font-size: 0.68rem; grid-template-columns: 18px 8px auto; padding: 0 5px 0 2px; gap: 4px; }
+body.is-touch .board-chip { width: 8px; height: 8px; border-width: 1px; }
 body.is-touch .board-name { display: none; }
-body.is-touch .hud-place { top: calc(max(14px, env(safe-area-inset-top)) + 112px); bottom: auto; left: var(--gutter); right: auto; font-size: clamp(3rem, 10vw, 5rem); }
+body.is-touch .hud-lap, body.is-touch .hud-time, body.is-touch .mute { top: max(10px, env(safe-area-inset-top)); }
+body.is-touch .hud-label { font-size: 1rem; }
+body.is-touch #hud-lap { font-size: clamp(1.8rem, 6vw, 2.8rem); }
+body.is-touch .hud-gp { font-size: 0.7rem; margin-top: 2px; }
+body.is-touch .hud-time { font-size: 1.1rem; padding: 2px 8px; border-width: 2px; border-radius: 8px; }
+body.is-touch .hud-place { top: calc(max(10px, env(safe-area-inset-top)) + 64px); bottom: auto; left: var(--gutter); right: auto; font-size: clamp(2rem, 7vw, 3.2rem); }
 
 .mute {
   position: fixed;
