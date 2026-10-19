@@ -1,6 +1,6 @@
 # Bicho d'Água
 
-An online jet-ski race for up to 4 friends, played in the browser. Four animal racers, a pool inside a volcano, 5 laps, and the look of a late-90s console game on a CRT TV. No install, no account: open the link, share a 4-letter code, race. **[bicho-dagua.onrender.com](https://bicho-dagua.onrender.com)**
+An online jet-ski race for up to 4 friends, played in the browser. Four animal racers, a pool inside a volcano, 5 laps, and the look of a late-90s console game on a CRT TV. No install, no account: open the link, share a 4-letter code, race. **[bichodagua.avaaraujo.com](https://bichodagua.avaaraujo.com)**
 
 ![Four animal racers on jet-skis cornering around the checkered center wall of the pool, with the lap counter, timer, standings and position on the HUD](.github/readme/race.gif)
 
