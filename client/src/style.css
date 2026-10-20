@@ -202,6 +202,16 @@ body.is-touch .controls-hint { display: none; }
   text-shadow: 0 2px 0 var(--plum-deep), 0 0 10px rgba(36, 20, 42, 0.9);
 }
 
+.credit {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--cream);
+  opacity: 0.6;
+  text-shadow: 0 2px 0 var(--plum-deep);
+}
+.credit a { color: inherit; text-underline-offset: 2px; }
+.credit a:not(:hover) { text-decoration: none; }
+
 /* centraliza sem cortar o topo quando o conteúdo é maior que a tela */
 .screen > :first-child { margin-top: auto; }
 .screen > :last-child { margin-bottom: auto; }
